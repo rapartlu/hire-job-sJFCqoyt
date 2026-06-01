@@ -15,216 +15,134 @@
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
       --bg: #0b0c10;
-      --sidebar-bg: #12131a;
-      --card-bg: #1a1b25;
-      --card-active: #1e2640;
+      --surface: #12131a;
+      --surface2: #1a1b25;
       --accent: #5b8cff;
+      --accent2: #8fb4ff;
       --text: #e8eaf0;
       --muted: #7a7d92;
       --border: #252733;
       --footer-bg: #0d0e14;
     }
-
     html, body {
-      width: 100%; height: 100%;
-      background: var(--bg);
-      color: var(--text);
+      width: 100%; height: 100%; background: var(--bg);
+      color: var(--text); overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      overflow: hidden;
     }
-
-    #app {
-      display: grid;
-      grid-template-rows: 48px 1fr 36px;
-      grid-template-columns: 200px 1fr;
-      height: 100vh;
-    }
+    #app { display: flex; flex-direction: column; height: 100vh; }
 
     /* Header */
     #header {
-      grid-column: 1 / 3;
-      background: var(--sidebar-bg);
+      background: var(--surface);
       border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
       padding: 0 16px;
+      height: 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
     }
-    #header h1 {
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: 0.01em;
-    }
+    #header h1 { font-size: 15px; font-weight: 600; }
     #header h1 span { color: var(--accent); }
-
     #dl-btn {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 5px;
-      padding: 6px 14px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      background: var(--accent); color: #fff; border: none;
+      border-radius: 5px; padding: 6px 14px; font-size: 13px;
+      font-weight: 500; cursor: pointer; opacity: 1;
       transition: opacity 0.15s;
     }
     #dl-btn:hover { opacity: 0.85; }
-    #dl-btn:active { opacity: 0.7; }
+    #dl-btn:disabled { opacity: 0.35; cursor: default; }
 
-    /* Sidebar */
-    #sidebar {
-      background: var(--sidebar-bg);
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      padding: 10px 8px;
+    /* Search bar */
+    #search-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      flex-shrink: 0;
+      position: relative;
     }
-    #sidebar::-webkit-scrollbar { width: 4px; }
-    #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-    .sidebar-label {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      padding: 4px 8px 8px;
+    #search-wrap { position: relative; max-width: 480px; margin: 0 auto; }
+    #search-input {
+      width: 100%; background: var(--surface2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 42px 9px 14px; font-size: 14px;
+      outline: none; transition: border-color 0.15s;
     }
-
-    .landmark-card {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 10px;
-      border-radius: 7px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: background 0.12s, border-color 0.12s;
-      margin-bottom: 4px;
+    #search-input:focus { border-color: var(--accent); }
+    #search-input::placeholder { color: var(--muted); }
+    #search-icon {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: 16px; pointer-events: none;
     }
-    .landmark-card:hover { background: var(--card-bg); }
-    .landmark-card.active {
-      background: var(--card-active);
-      border-color: var(--accent);
+    #suggestions {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; z-index: 100; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      display: none;
     }
-    .card-icon {
-      font-size: 22px;
-      line-height: 1;
-      min-width: 28px;
-      text-align: center;
+    #suggestions.open { display: block; }
+    .suggestion {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 14px; cursor: pointer;
+      transition: background 0.1s;
     }
-    .card-text { min-width: 0; }
-    .card-name {
-      font-size: 13px;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .card-city {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 1px;
+    .suggestion:hover, .suggestion.selected { background: rgba(91,140,255,0.12); }
+    .sug-icon { font-size: 20px; min-width: 24px; text-align: center; }
+    .sug-name { font-size: 13px; font-weight: 500; }
+    .sug-city { font-size: 11px; color: var(--muted); }
+    #no-results {
+      padding: 14px; text-align: center;
+      font-size: 13px; color: var(--muted);
+      display: none;
     }
 
     /* Canvas area */
     #canvas-wrap {
-      position: relative;
-      overflow: hidden;
-      background: var(--bg);
+      flex: 1; position: relative; overflow: hidden; min-height: 0;
     }
-    #canvas-wrap canvas {
-      display: block;
-      width: 100% !important;
-      height: 100% !important;
-    }
+    #canvas-wrap canvas { display: block; width: 100% !important; height: 100% !important; }
 
-    /* Landmark info overlay */
+    /* Empty state */
+    #empty-state {
+      position: absolute; inset: 0; display: flex;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; pointer-events: none;
+    }
+    #empty-state .icon { font-size: 52px; opacity: 0.25; }
+    #empty-state p { font-size: 14px; color: var(--muted); }
+
+    /* Info overlay */
     #info-overlay {
-      position: absolute;
-      bottom: 16px;
-      left: 16px;
-      background: rgba(10, 11, 18, 0.82);
-      backdrop-filter: blur(6px);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      pointer-events: none;
+      position: absolute; bottom: 14px; left: 14px;
+      background: rgba(10,11,18,0.82); backdrop-filter: blur(6px);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 14px; pointer-events: none;
+      display: none;
     }
-    #info-name {
-      font-size: 16px;
-      font-weight: 600;
-    }
-    #info-meta {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    /* Hint overlay */
+    #info-overlay.visible { display: block; }
+    #info-name { font-size: 15px; font-weight: 600; }
+    #info-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
     #hint {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      font-size: 11px;
-      color: rgba(255,255,255,0.35);
-      pointer-events: none;
-      text-align: right;
-      line-height: 1.6;
+      position: absolute; top: 10px; right: 12px;
+      font-size: 11px; color: rgba(255,255,255,0.3);
+      pointer-events: none; text-align: right; line-height: 1.6;
+      display: none;
     }
+    #hint.visible { display: block; }
 
     /* Footer */
     #footer {
-      grid-column: 1 / 3;
-      background: var(--footer-bg);
+      height: 34px; background: var(--footer-bg);
       border-top: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      color: var(--muted);
-      gap: 12px;
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; font-size: 11px; color: var(--muted); flex-shrink: 0;
     }
-    #footer a {
-      color: var(--accent);
-      text-decoration: none;
-    }
+    #footer a { color: var(--accent); text-decoration: none; }
     #footer a:hover { text-decoration: underline; }
 
-    /* Mobile */
-    @media (max-width: 600px) {
-      #app {
-        grid-template-rows: 48px auto 1fr 36px;
-        grid-template-columns: 1fr;
-      }
-      #header { grid-column: 1; }
-      #sidebar {
-        grid-row: 2;
-        grid-column: 1;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        gap: 6px;
-        padding: 8px;
-        overflow-x: auto;
-        overflow-y: hidden;
-      }
-      .sidebar-label { display: none; }
-      .landmark-card {
-        flex-direction: column;
-        min-width: 72px;
-        margin-bottom: 0;
-        padding: 8px 6px;
-        text-align: center;
-      }
-      .card-city { display: none; }
-      #canvas-wrap { grid-row: 3; grid-column: 1; }
-      #footer { grid-row: 4; grid-column: 1; }
+    @media (max-width: 500px) {
+      #search-input { font-size: 16px; }
     }
   </style>
 </head>
@@ -232,19 +150,26 @@
 <div id="app">
   <header id="header">
     <h1>3D <span>Landmark</span> Viewer</h1>
-    <button id="dl-btn">&#8595; Download .glb</button>
+    <button id="dl-btn" disabled>&#8595; Download .glb</button>
   </header>
 
-  <nav id="sidebar">
-    <div class="sidebar-label">Landmarks</div>
-  </nav>
+  <div id="search-bar">
+    <div id="search-wrap">
+      <input id="search-input" type="text" placeholder="Search any landmark — try &quot;Big Ben&quot; or &quot;Pyramid&quot;..." autocomplete="off" spellcheck="false">
+      <span id="search-icon">&#x1F50D;</span>
+      <div id="suggestions">
+        <div id="no-results">No landmarks found. More coming soon.</div>
+      </div>
+    </div>
+  </div>
 
   <main id="canvas-wrap">
-    <div id="info-overlay">
-      <div id="info-name">-</div>
-      <div id="info-meta">-</div>
+    <div id="empty-state">
+      <div class="icon">🏛️</div>
+      <p>Search for a landmark above to load its 3D model.</p>
     </div>
-    <div id="hint">Drag to rotate · Scroll to zoom</div>
+    <div id="info-overlay"><div id="info-name"></div><div id="info-meta"></div></div>
+    <div id="hint">Drag to rotate &middot; Scroll to zoom</div>
   </main>
 
   <footer id="footer">
@@ -252,7 +177,7 @@
     <span>&middot;</span>
     <a href="https://hire.autonomous-fleet.workers.dev" target="_blank" rel="noopener">hire.autonomous-fleet.workers.dev</a>
     <span>&middot;</span>
-    <span>v1</span>
+    <span>v2</span>
   </footer>
 </div>
 
@@ -261,65 +186,488 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
-// ─── Landmark definitions ─────────────────────────────────────────────────────
+// ─── Material helpers ─────────────────────────────────────────────────────────
+
+function mat(color, roughness = 0.8, metalness = 0.05) {
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+}
+
+// ─── Landmark builders ────────────────────────────────────────────────────────
+
+function buildEiffelTower() {
+  const g = new THREE.Group();
+  const ironDark = mat(0x3b2f1e, 0.75, 0.35);
+  const ironMid  = mat(0x5c4a35, 0.70, 0.30);
+  const legData  = [{dx:1.6,dz:1.6},{dx:-1.6,dz:1.6},{dx:1.6,dz:-1.6},{dx:-1.6,dz:-1.6}];
+
+  legData.forEach(({dx,dz}) => {
+    const pts = [new THREE.Vector3(dx,0,dz), new THREE.Vector3(dx*0.35,4.5,dz*0.35)];
+    const curve = new THREE.CatmullRomCurve3(pts);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,6,0.14,6,false), ironDark));
+    for (let j=0;j<3;j++){
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.6,4), ironMid);
+      const p0=curve.getPoint(j/3), p1=curve.getPoint(j/3+0.15);
+      b.position.lerpVectors(p0,p1,0.5); b.lookAt(p1); b.rotateX(Math.PI/2);
+      g.add(b);
+    }
+  });
+  const plat1 = new THREE.Mesh(new THREE.BoxGeometry(3.0,0.28,3.0), ironDark);
+  plat1.position.y=4.5; g.add(plat1);
+  for(let i=0;i<16;i++){const a=(i/16)*Math.PI*2;const p=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.35,0.06),ironMid);p.position.set(Math.cos(a)*1.4,4.8,Math.sin(a)*1.4);g.add(p);}
+  legData.forEach(({dx,dz})=>{
+    const pts=[new THREE.Vector3(dx*0.22,4.5,dz*0.22),new THREE.Vector3(dx*0.06,8.0,dz*0.06)];
+    const curve=new THREE.CatmullRomCurve3(pts);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,4,0.09,5,false),ironDark));
+  });
+  const plat2=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.22,1.5),ironDark); plat2.position.y=8; g.add(plat2);
+  const upper=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.65,4,10),ironDark); upper.position.y=10; g.add(upper);
+  const plat3=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.2,12),ironMid); plat3.position.y=12; g.add(plat3);
+  const spire=new THREE.Mesh(new THREE.ConeGeometry(0.22,3.5,8),ironDark); spire.position.y=13.75; g.add(spire);
+  const tip=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,1.2,5),ironMid); tip.position.y=15.6; g.add(tip);
+  return g;
+}
+
+function buildColosseum() {
+  const g = new THREE.Group();
+  const stone = mat(0xc8a76a, 0.92);
+  const dark  = mat(0x9e8350, 0.95);
+  const arch  = mat(0x4a3d28, 0.98);
+  const a=6.5, b=5.2, FLOORS=3, FH=1.6, BAYS=32;
+
+  function ep(angle){return new THREE.Vector2(Math.cos(angle)*a,Math.sin(angle)*b);}
+
+  for(let floor=0;floor<FLOORS;floor++){
+    const y=floor*FH; const s=1-floor*0.02;
+    const ws=new THREE.Shape();
+    for(let i=0;i<=BAYS;i++){const ang=(i/BAYS)*Math.PI*2;const p=ep(ang);if(i===0)ws.moveTo(p.x*s,p.y*s);else ws.lineTo(p.x*s,p.y*s);}
+    const hole=new THREE.Path();
+    for(let i=0;i<=BAYS;i++){const ang=(i/BAYS)*Math.PI*2;if(i===0)hole.moveTo(Math.cos(ang)*(a-1)*s,Math.sin(ang)*(b-0.8)*s);else hole.lineTo(Math.cos(ang)*(a-1)*s,Math.sin(ang)*(b-0.8)*s);}
+    ws.holes.push(hole);
+    const wg=new THREE.ExtrudeGeometry(ws,{depth:FH*0.55,bevelEnabled:false}); wg.rotateX(Math.PI/2);
+    const wm=new THREE.Mesh(wg,stone); wm.position.y=y; g.add(wm);
+    for(let i=0;i<BAYS;i++){
+      const ang=(i/BAYS)*Math.PI*2;const p=ep(ang);
+      const pillar=new THREE.Mesh(new THREE.BoxGeometry(0.22,FH,0.22),dark);
+      pillar.position.set(p.x*s*0.975,y+FH/2,p.y*s*0.975); g.add(pillar);
+      if(floor<FLOORS-1){const ma=(i+0.5)/BAYS*Math.PI*2;const mx=Math.cos(ma)*a*s;const mz=Math.sin(ma)*b*s;const av=new THREE.Mesh(new THREE.BoxGeometry(0.18,FH*0.58,0.12),arch);av.position.set(mx*0.965,y+FH*0.34,mz*0.965);av.lookAt(av.position.x*2,av.position.y,av.position.z*2);g.add(av);}
+    }
+  }
+  const aw=FLOORS*FH;
+  const as2=new THREE.Shape();
+  for(let i=0;i<=BAYS;i++){const ang=(i/BAYS)*Math.PI*2;if(i===0)as2.moveTo(Math.cos(ang)*a*0.96,Math.sin(ang)*b*0.96);else as2.lineTo(Math.cos(ang)*a*0.96,Math.sin(ang)*b*0.96);}
+  const ah=new THREE.Path();
+  for(let i=0;i<=BAYS;i++){const ang=(i/BAYS)*Math.PI*2;if(i===0)ah.moveTo(Math.cos(ang)*(a-1)*0.96,Math.sin(ang)*(b-0.8)*0.96);else ah.lineTo(Math.cos(ang)*(a-1)*0.96,Math.sin(ang)*(b-0.8)*0.96);}
+  as2.holes.push(ah);
+  const ag=new THREE.ExtrudeGeometry(as2,{depth:0.9,bevelEnabled:false}); ag.rotateX(Math.PI/2);
+  g.add(new THREE.Mesh(ag,dark));
+  return g;
+}
+
+function buildBigBen() {
+  const g = new THREE.Group();
+  const lime=mat(0xc8c0a0,0.9), roof=mat(0x4a6040,0.8), clock=mat(0xf0edd8,0.6), gold=mat(0xb8922a,0.4,0.6), dk=mat(0x3a3530,0.95);
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3.2,0.6,3.2),lime),{position:{x:0,y:0.3,z:0}}));
+  const tower=new THREE.Mesh(new THREE.BoxGeometry(2.6,9,2.6),lime); tower.position.y=5.1; g.add(tower);
+  const belfry=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.2,2.8),lime); belfry.position.y=10.2; g.add(belfry);
+  const cs=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.8,2.8),clock); cs.position.y=11.7; g.add(cs);
+  [{pos:[0,11.7,1.42],ry:0},{pos:[0,11.7,-1.42],ry:Math.PI},{pos:[1.42,11.7,0],ry:Math.PI/2},{pos:[-1.42,11.7,0],ry:-Math.PI/2}].forEach(({pos,ry})=>{
+    const ring=new THREE.Mesh(new THREE.RingGeometry(0.55,0.65,32),gold); ring.position.set(...pos); ring.rotation.y=ry; ring.rotation.x=Math.PI/2; g.add(ring);
+    const face=new THREE.Mesh(new THREE.CircleGeometry(0.55,32),clock); face.position.set(...pos); face.rotation.y=ry; face.rotation.x=Math.PI/2; g.add(face);
+  });
+  const corb=new THREE.Mesh(new THREE.BoxGeometry(3,0.3,3),gold); corb.position.y=12.75; g.add(corb);
+  const sb=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.4,0.8,8),roof); sb.position.y=13.3; g.add(sb);
+  const sp=new THREE.Mesh(new THREE.CylinderGeometry(0.05,1,5.5,8),roof); sp.position.y=16.45; g.add(sp);
+  return g;
+}
+
+function buildTajMahal() {
+  const g = new THREE.Group();
+  const mb=mat(0xf5f0e8,0.3,0.05), ms=mat(0xddd5c0,0.4,0.05), inl=mat(0xb8d4c8,0.5,0.1), ar=mat(0x1a1814,0.95);
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(11,0.7,11),ms),{position:{x:0,y:0.35,z:0}}));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(10,0.5,10),mb),{position:{x:0,y:0.95,z:0}}));
+  [[-4.2,0,-4.2],[4.2,0,-4.2],[-4.2,0,4.2],[4.2,0,4.2]].forEach(([mx,,mz])=>{
+    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.45,0.4,12),ms),{position:{x:mx,y:1.4,z:mz}}));
+    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.38,5.5,12),mb),{position:{x:mx,y:4.45,z:mz}}));
+    [2.5,4,5.5].forEach(bh=>{g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.18,12),ms),{position:{x:mx,y:1.6+bh,z:mz}}));});
+    g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.35,10,7,0,Math.PI*2,0,Math.PI/2),mb),{position:{x:mx,y:7.5,z:mz}}));
+    g.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.08,1,6),ms),{position:{x:mx,y:8.3,z:mz}}));
+  });
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(5.5,3.5,5.5),mb),{position:{x:0,y:2.95,z:0}}));
+  [[0,2.8,2.76,0],[0,2.8,-2.76,Math.PI],[2.76,2.8,0,Math.PI/2],[-2.76,2.8,0,-Math.PI/2]].forEach(([px,py,pz,ry])=>{
+    const am=new THREE.Mesh(new THREE.BoxGeometry(1.6,2.5,0.1),ar); am.position.set(px,py,pz); am.rotation.y=ry; g.add(am);
+  });
+  [[-2,4.7,-2],[2,4.7,-2],[-2,4.7,2],[2,4.7,2]].forEach(([tx,ty,tz])=>{
+    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.6,1,8),mb),{position:{x:tx,y:ty,z:tz}}));
+    g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.55,8,6,0,Math.PI*2,0,Math.PI/2),mb),{position:{x:tx,y:ty+0.55,z:tz}}));
+    g.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.1,0.8,6),ms),{position:{x:tx,y:ty+1.1,z:tz}}));
+  });
+  const drum=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.6,0.9,8),mb); drum.position.y=5.15; g.add(drum);
+  const pts=[]; for(let i=0;i<=20;i++){const t=i/20;pts.push(new THREE.Vector2(Math.sin(t*Math.PI)*1.75*(1+0.35*Math.sin(t*Math.PI*1.2)),t*3.5));}
+  const dome=new THREE.Mesh(new THREE.LatheGeometry(pts,24),mb); dome.position.y=5.6; g.add(dome);
+  g.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.1,1.2,6),ms),{position:{x:0,y:9.5,z:0}}));
+  g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.12,8,6),ms),{position:{x:0,y:10.1,z:0}}));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(5.52,0.12,5.52),inl),{position:{x:0,y:4.7,z:0}}));
+  return g;
+}
+
+function buildStatueOfLiberty() {
+  const g = new THREE.Group();
+  const gran=mat(0x6a6560,0.9), conc=mat(0x9a9285,0.85), cop=mat(0x4a8a72,0.8,0.15), cdk=mat(0x3a7060,0.85,0.15);
+  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(3.5,3.8,0.4,12),gran),{position:{x:0,y:0.2,z:0}}));
+  for(let i=0;i<10;i++){const a=(i/10)*Math.PI*2,r=i%2===0?3.5:2.8;const b=new THREE.Mesh(new THREE.BoxGeometry(1,0.6,0.5),gran);b.position.set(Math.cos(a)*r,0.5,Math.sin(a)*r);b.rotation.y=a+Math.PI/2;g.add(b);}
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2.8,2,2.8),gran),{position:{x:0,y:1.4,z:0}}));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2.4,2,2.4),conc),{position:{x:0,y:3.4,z:0}}));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2,0.5,2),conc),{position:{x:0,y:4.85,z:0}}));
+  const robes=new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.85,3.5,10),cop); robes.position.y=6.9; g.add(robes);
+  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.52,0.7,1.8,10),cop),{position:{x:0,y:9.5,z:0}}));
+  g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.42,12,10),cop),{position:{x:0,y:10.9,z:0}}));
+  for(let i=0;i<7;i++){const a=(i/7)*Math.PI*2;const sp=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.55,5),cop);sp.position.set(Math.cos(a)*0.38,11.05,Math.sin(a)*0.38);sp.rotation.z=Math.atan2(Math.cos(a),0.5)*(a>Math.PI?-1:1);sp.rotation.x=Math.atan2(Math.sin(a),0.5)*-1;g.add(sp);}
+  const raUp=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,1,6),cop); raUp.position.set(0.65,9.8,0); raUp.rotation.z=-1.1; g.add(raUp);
+  const fa=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,0.8,6),cop); fa.position.set(1.35,10.5,0); fa.rotation.z=-0.3; g.add(fa);
+  const tc=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.08,0.25,8),cdk); tc.position.set(1.6,11.55,0); g.add(tc);
+  const fl=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.4,8),mat(0xffcc44,0.1,0.2)); fl.position.set(1.62,11.85,0); g.add(fl);
+  const fll=new THREE.PointLight(0xffaa22,0.8,5); fll.position.set(1.62,11.85,0); g.add(fll);
+  return g;
+}
+
+function buildEmpireState() {
+  const g = new THREE.Group();
+  const art=mat(0xb0a898,0.8), artDk=mat(0x857d75,0.85), mooring=mat(0xc8c0b0,0.7,0.1);
+  // Setback tiers (Art Deco stepped form)
+  [[8,3,8,1.5],[6.5,4,6.5,5],[5,4,5,9],[3.5,4,3.5,13],[2.5,4,2.5,17],[1.8,3,1.8,21],[1.2,2.5,1.2,24.25],[0.8,4,0.8,27]].forEach(([w,h,d,y])=>{
+    const tier=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),art); tier.position.y=y; tier.castShadow=true; g.add(tier);
+  });
+  // Art deco vertical fins
+  for(let i=-3;i<=3;i+=1.5){const fin=new THREE.Mesh(new THREE.BoxGeometry(0.1,20,0.1),artDk);fin.position.set(i,12,2.55);g.add(fin);const fin2=new THREE.Mesh(new THREE.BoxGeometry(0.1,20,0.1),artDk);fin2.position.set(2.55,12,i);fin2.rotation.y=Math.PI/2;g.add(fin2);}
+  // Mooring mast / spire
+  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.35,5,8),mooring); mast.position.y=31.5; g.add(mast);
+  const tv=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,2.5,5),artDk); tv.position.y=34.25; g.add(tv);
+  return g;
+}
+
+function buildStonehenge() {
+  const g = new THREE.Group();
+  const st=mat(0x9a9088,0.95), dark=mat(0x6a6060,0.98);
+  // Outer sarsen circle (30 uprights + lintels)
+  const R=5.5;
+  for(let i=0;i<16;i++){
+    const a=(i/16)*Math.PI*2;
+    const stone=new THREE.Mesh(new THREE.BoxGeometry(0.7,2.8,0.5),st);
+    stone.position.set(Math.cos(a)*R,1.4,Math.sin(a)*R);
+    stone.rotation.y=-a; g.add(stone);
+    // Lintel
+    if(i%2===0){
+      const ma=(i+0.5)/16*Math.PI*2;
+      const lintel=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.5,0.5),dark);
+      lintel.position.set(Math.cos(ma)*R,2.9,Math.sin(ma)*R);
+      lintel.rotation.y=-ma; g.add(lintel);
+    }
+  }
+  // Inner trilithon horseshoe (5 pairs)
+  const Ri=3.2;
+  for(let i=0;i<5;i++){
+    const a=(i/5)*Math.PI+Math.PI*0.5;
+    const tall=new THREE.Mesh(new THREE.BoxGeometry(0.6,4,0.4),dark);
+    tall.position.set(Math.cos(a)*Ri,2,Math.sin(a)*Ri); tall.rotation.y=-a; g.add(tall);
+    const tall2=new THREE.Mesh(new THREE.BoxGeometry(0.6,4,0.4),dark);
+    tall2.position.set(Math.cos(a+0.25)*Ri,2,Math.sin(a+0.25)*Ri); tall2.rotation.y=-a-0.25; g.add(tall2);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.5,0.4),dark);
+    cap.position.set(Math.cos(a+0.125)*Ri,4.25,Math.sin(a+0.125)*Ri); cap.rotation.y=-a-0.125; g.add(cap);
+  }
+  // Altar stone
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1,0.25,0.4),st),{position:{x:0,y:0.125,z:0}}));
+  return g;
+}
+
+function buildChichenItza() {
+  const g = new THREE.Group();
+  const lime=mat(0xc8bc98,0.9), dark=mat(0x9a9080,0.95), temple=mat(0xd8cca8,0.85);
+  // El Castillo stepped pyramid — 9 terraces
+  for(let level=0;level<9;level++){
+    const w=8-level*0.8, h=0.9, d=8-level*0.8;
+    const tier=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),level%2===0?lime:dark);
+    tier.position.y=level*h+h/2; g.add(tier);
+  }
+  // Temple at top
+  const temple_base=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.5,2.5),temple); temple_base.position.y=9; g.add(temple_base);
+  const temple_walls=new THREE.Mesh(new THREE.BoxGeometry(2.0,1.8,2.0),temple); temple_walls.position.y=10.15; g.add(temple_walls);
+  const comb=new THREE.Mesh(new THREE.BoxGeometry(2.0,1.2,0.2),temple); comb.position.y=11.6; g.add(comb);
+  // 4 staircases (flat ramps on each face)
+  for(let i=0;i<4;i++){
+    const a=i*Math.PI/2;
+    const stair=new THREE.Mesh(new THREE.BoxGeometry(1.2,8.2,0.2),lime);
+    stair.position.set(Math.cos(a)*4.05,4.1,Math.sin(a)*4.05);
+    stair.rotation.y=a; stair.rotation.x=-Math.atan2(4,4); g.add(stair);
+  }
+  return g;
+}
+
+function buildSydneyOperaHouse() {
+  const g = new THREE.Group();
+  const tile=mat(0xf8f6f2,0.2,0.05), base=mat(0xe0dcd5,0.7), conc=mat(0xc8c4bc,0.8);
+  // Podium base
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(12,0.8,6),base),{position:{x:0,y:0.4,z:0}}));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(11,0.4,5.5),conc),{position:{x:0,y:1,z:0}}));
+
+  // Shell geometry — iconic curved sail shapes
+  // Shell 1: large main concert hall shell (3 nested shells)
+  function buildShell(cx, cz, xScale, yScale, zScale, rotY) {
+    const shellGroup = new THREE.Group();
+    for (let s = 0; s < 3; s++) {
+      const pts = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const r = (1 - t) * 2.2;
+        const h = Math.sin(t * Math.PI) * 3.5 * (1 - t * 0.3);
+        pts.push(new THREE.Vector2(r * (1 + s * 0.12), h * yScale));
+      }
+      const geo = new THREE.LatheGeometry(pts, 8, 0, Math.PI);
+      const shell = new THREE.Mesh(geo, tile);
+      shell.scale.set(xScale * (1 - s * 0.08), 1, zScale * (1 - s * 0.08));
+      shellGroup.add(shell);
+    }
+    shellGroup.position.set(cx, 1.2, cz);
+    shellGroup.rotation.y = rotY;
+    return shellGroup;
+  }
+
+  g.add(buildShell(-1.5, 0, 1.1, 1.0, 0.8, 0));      // main hall
+  g.add(buildShell(2.5, 0, 0.85, 0.82, 0.65, 0.1));   // opera theatre
+  g.add(buildShell(5.5, 0, 0.5, 0.55, 0.45, 0.2));    // smaller shell
+
+  return g;
+}
+
+function buildBurjKhalifa() {
+  const g = new THREE.Group();
+  const glass=mat(0x8cb8c8,0.3,0.5), steel=mat(0x6898a8,0.4,0.6), dark=mat(0x2a3540,0.5,0.7);
+
+  // Trilobal cross-section tower (simplified with 3-wing setbacks)
+  const SECTIONS = [
+    [2.8,2.8,8], [2.6,2.6,6], [2.4,2.4,6], [2.2,1.8,5],
+    [2.0,1.4,5], [1.8,1.2,5], [1.6,1.0,5], [1.4,0.8,5],
+    [1.2,0.6,5], [1.0,0.5,5], [0.8,0.4,4], [0.6,0.35,4],
+    [0.5,0.3,4], [0.4,0.28,4], [0.35,0.25,4], [0.3,0.22,6],
+  ];
+  let y = 0;
+  SECTIONS.forEach(([w,d,h], idx) => {
+    const core=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),idx%3===0?steel:glass);
+    core.position.y = y + h/2; g.add(core);
+    // Add 3 wing fins
+    for(let i=0;i<3;i++){
+      const a=(i/3)*Math.PI*2;
+      const wing=new THREE.Mesh(new THREE.BoxGeometry(w*0.4,h,d*0.25),idx%2===0?glass:dark);
+      wing.position.set(Math.cos(a)*w*0.55, y+h/2, Math.sin(a)*d*0.55);
+      wing.rotation.y=a; g.add(wing);
+    }
+    y += h;
+  });
+  // Spire
+  const spire=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.2,15,8),steel); spire.position.y=y+7.5; g.add(spire);
+  return g;
+}
+
+function buildSagradaFamilia() {
+  const g = new THREE.Group();
+  const st=mat(0xd4c8a8,0.9), dk=mat(0xa09080,0.92), peak=mat(0xc8b888,0.85);
+
+  // Nave
+  const nave=new THREE.Mesh(new THREE.BoxGeometry(5,6,10),st); nave.position.y=3; g.add(nave);
+
+  // 4 corner towers (Nativity / Passion facades) - tall organic spires
+  const towerPos=[[2.5,0,4.5],[-2.5,0,4.5],[2.5,0,-4.5],[-2.5,0,-4.5]];
+  towerPos.forEach(([tx,,tz],i)=>{
+    const h=9+i*0.5;
+    // Tower shaft
+    const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.8,h,8),st);
+    shaft.position.set(tx,h/2,tz); g.add(shaft);
+    // Textured surface suggestion (ribs)
+    for(let r=0;r<8;r++){const a=(r/8)*Math.PI*2;const rib=new THREE.Mesh(new THREE.BoxGeometry(0.08,h,0.08),dk);rib.position.set(tx+Math.cos(a)*0.62,h/2,tz+Math.sin(a)*0.62);g.add(rib);}
+    // Pinnacle
+    const pin=new THREE.Mesh(new THREE.ConeGeometry(0.55,3.5,8),peak); pin.position.set(tx,h+1.75,tz); g.add(pin);
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(0.1,1.2,5),peak); tip.position.set(tx,h+4,tz); g.add(tip);
+  });
+
+  // 4 taller mid towers
+  [[1.5,0,0],[-1.5,0,0],[0,0,2],[0,0,-2]].forEach(([tx,,tz],i)=>{
+    const h=13+i*0.8;
+    const sh=new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.9,h,10),st); sh.position.set(tx,h/2,tz); g.add(sh);
+    const pp=new THREE.Mesh(new THREE.ConeGeometry(0.6,4,8),peak); pp.position.set(tx,h+2,tz); g.add(pp);
+  });
+
+  // Central tower (Jesus)
+  const ct=new THREE.Mesh(new THREE.CylinderGeometry(1.0,1.4,18,10),st); ct.position.y=9; g.add(ct);
+  const cp=new THREE.Mesh(new THREE.ConeGeometry(0.9,5,8),peak); cp.position.y=20.5; g.add(cp);
+  const ctp=new THREE.Mesh(new THREE.SphereGeometry(0.35,8,6),mat(0xd4aa30,0.3,0.8)); ctp.position.y=23.5; g.add(ctp);
+
+  // Central portal details
+  const portal=new THREE.Mesh(new THREE.BoxGeometry(3,5,0.2),dk); portal.position.set(0,3.5,5.05); g.add(portal);
+  return g;
+}
+
+function buildParthenon() {
+  const g = new THREE.Group();
+  const marble=mat(0xf0e8d8,0.5,0.05), cols=mat(0xf8f0e0,0.4,0.05), dark=mat(0xd4c8a8,0.7);
+  // Stepped base (stylobate)
+  [[10.5,0.4,22],[10,0.4,21.5],[9.5,0.4,21]].forEach(([w,h,d],i)=>{g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),marble),{position:{x:0,y:i*h+h/2,z:0}}));});
+  // 46 columns (8 front/back, 17 long sides - simplified as ~30)
+  const colH=5.5, colR=0.3;
+  const frontCols=8, sideCols=17;
+  const STYLE=[];
+  for(let i=0;i<frontCols;i++) STYLE.push([(i/(frontCols-1)-0.5)*8.5, 10]);
+  for(let i=0;i<frontCols;i++) STYLE.push([(i/(frontCols-1)-0.5)*8.5, -10]);
+  for(let j=1;j<sideCols-1;j++) STYLE.push([4.5, (j/(sideCols-1)-0.5)*19]);
+  for(let j=1;j<sideCols-1;j++) STYLE.push([-4.5, (j/(sideCols-1)-0.5)*19]);
+  STYLE.forEach(([cx,cz])=>{const col=new THREE.Mesh(new THREE.CylinderGeometry(colR*0.8,colR,colH,10),cols);col.position.set(cx,1.2+colH/2,cz);g.add(col);});
+  // Architrave
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(9.8,0.7,22),dark),{position:{x:0,y:1.2+colH+0.35,z:0}}));
+  // Frieze
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(9.6,0.8,21.8),marble),{position:{x:0,y:1.2+colH+1.1,z:0}}));
+  // Gable (pediment) front and back
+  [[0,0,10],[-Math.PI,0,-10]].forEach(([rx,ry,pz])=>{
+    const pts=[new THREE.Vector2(-4.8,0),new THREE.Vector2(0,1.8),new THREE.Vector2(4.8,0)];
+    const shape=new THREE.Shape(pts); shape.lineTo(-4.8,0);
+    const geo=new THREE.ExtrudeGeometry(shape,{depth:0.3,bevelEnabled:false});
+    const mesh=new THREE.Mesh(geo,marble); mesh.position.set(0,1.2+colH+2,pz); mesh.rotation.y=ry; g.add(mesh);
+  });
+  // Cella (inner chamber)
+  const cella=new THREE.Mesh(new THREE.BoxGeometry(7,5,18),marble); cella.position.y=1.2+2.75; g.add(cella);
+  return g;
+}
+
+function buildLeaningTower() {
+  const g = new THREE.Group();
+  const marble=mat(0xf8f4ec,0.4,0.05), dk=mat(0xddd5c8,0.6);
+  // Base
+  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(3.0,3.2,0.8,24),dk),{position:{x:0,y:0.4,z:0}}));
+  // 8 storeys of loggias
+  for(let i=0;i<8;i++){
+    const y=0.8+i*2.0;
+    const floor=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,0.25,24),dk); floor.position.y=y+0.125; g.add(floor);
+    const wall=new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.4,1.6,24,1,false),marble); wall.position.y=y+1.05; g.add(wall);
+    // Columns suggestion: ring of thin cylinders
+    for(let c=0;c<16;c++){const ca=(c/16)*Math.PI*2;const col=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,1.4,6),dk);col.position.set(Math.cos(ca)*2.35,y+1,Math.sin(ca)*2.35);g.add(col);}
+  }
+  // Belfry
+  const bell=new THREE.Mesh(new THREE.CylinderGeometry(2.0,2.4,1.5,24),dk); bell.position.y=17; g.add(bell);
+  const cap=new THREE.Mesh(new THREE.ConeGeometry(2.0,1.5,24),marble); cap.position.y=18.5; g.add(cap);
+  // Tilt the whole thing
+  g.rotation.z=0.063; // ~3.6° lean
+  return g;
+}
+
+// ─── Landmarks catalogue ──────────────────────────────────────────────────────
 
 const LANDMARKS = [
   {
     id: 'eiffel',
     name: 'Eiffel Tower',
-    city: 'Paris, France',
-    year: 'Built 1887-1889',
-    icon: '🗼',
-    build: buildEiffelTower,
-    camera: { x: 0, y: 8, z: 20 },
+    aliases: ['eiffel', 'eiffel tower', 'tour eiffel', 'paris tower'],
+    city: 'Paris, France', year: 'Built 1887-1889', icon: '🗼',
+    build: buildEiffelTower, camera: {x:0,y:8,z:20},
   },
   {
     id: 'colosseum',
     name: 'Colosseum',
-    city: 'Rome, Italy',
-    year: 'Built 70-80 AD',
-    icon: '🏛️',
-    build: buildColosseum,
-    camera: { x: 8, y: 6, z: 14 },
+    aliases: ['colosseum', 'coliseum', 'rome amphitheatre', 'flavian'],
+    city: 'Rome, Italy', year: 'Built 70-80 AD', icon: '🏛️',
+    build: buildColosseum, camera: {x:8,y:6,z:14},
   },
   {
     id: 'bigben',
-    name: 'Elizabeth Tower',
-    city: 'London, UK',
-    year: 'Built 1843-1859',
-    icon: '🕰️',
-    build: buildBigBen,
-    camera: { x: 4, y: 8, z: 16 },
+    name: 'Elizabeth Tower (Big Ben)',
+    aliases: ['big ben', 'elizabeth tower', 'clock tower', 'westminster', 'london tower'],
+    city: 'London, UK', year: 'Built 1843-1859', icon: '🕰️',
+    build: buildBigBen, camera: {x:4,y:8,z:16},
   },
   {
     id: 'tajmahal',
     name: 'Taj Mahal',
-    city: 'Agra, India',
-    year: 'Built 1631-1648',
-    icon: '🕌',
-    build: buildTajMahal,
-    camera: { x: 8, y: 6, z: 18 },
+    aliases: ['taj mahal', 'taj', 'agra', 'taj mahal india'],
+    city: 'Agra, India', year: 'Built 1631-1648', icon: '🕌',
+    build: buildTajMahal, camera: {x:8,y:6,z:18},
   },
   {
     id: 'liberty',
     name: 'Statue of Liberty',
-    city: 'New York, USA',
-    year: 'Dedicated 1886',
-    icon: '🗽',
-    build: buildStatueOfLiberty,
-    camera: { x: 5, y: 10, z: 20 },
+    aliases: ['statue of liberty', 'liberty', 'lady liberty', 'new york statue'],
+    city: 'New York, USA', year: 'Dedicated 1886', icon: '🗽',
+    build: buildStatueOfLiberty, camera: {x:5,y:10,z:20},
+  },
+  {
+    id: 'empire',
+    name: 'Empire State Building',
+    aliases: ['empire state', 'empire state building', 'esb', 'new york skyscraper'],
+    city: 'New York, USA', year: 'Built 1930-1931', icon: '🏙️',
+    build: buildEmpireState, camera: {x:6,y:15,z:22},
+  },
+  {
+    id: 'stonehenge',
+    name: 'Stonehenge',
+    aliases: ['stonehenge', 'stone henge', 'stone circle', 'wiltshire stones'],
+    city: 'Wiltshire, UK', year: 'Built c.3000 BC', icon: '⭕',
+    build: buildStonehenge, camera: {x:6,y:6,z:14},
+  },
+  {
+    id: 'chichen',
+    name: 'El Castillo (Chichen Itza)',
+    aliases: ['chichen itza', 'el castillo', 'mayan pyramid', 'mexican pyramid', 'pyramid mexico'],
+    city: 'Yucatan, Mexico', year: 'Built c.1000 AD', icon: '🏔️',
+    build: buildChichenItza, camera: {x:7,y:7,z:16},
+  },
+  {
+    id: 'sydney',
+    name: 'Sydney Opera House',
+    aliases: ['sydney opera house', 'opera house', 'sydney', 'opera sydney'],
+    city: 'Sydney, Australia', year: 'Opened 1973', icon: '🎭',
+    build: buildSydneyOperaHouse, camera: {x:8,y:5,z:14},
+  },
+  {
+    id: 'burj',
+    name: 'Burj Khalifa',
+    aliases: ['burj khalifa', 'burj', 'dubai tower', 'tallest building'],
+    city: 'Dubai, UAE', year: 'Opened 2010', icon: '🏗️',
+    build: buildBurjKhalifa, camera: {x:8,y:40,z:30},
+  },
+  {
+    id: 'sagrada',
+    name: 'Sagrada Familia',
+    aliases: ['sagrada familia', 'sagrada', 'gaudi church', 'barcelona cathedral'],
+    city: 'Barcelona, Spain', year: 'Under construction since 1882', icon: '⛪',
+    build: buildSagradaFamilia, camera: {x:8,y:10,z:22},
+  },
+  {
+    id: 'parthenon',
+    name: 'Parthenon',
+    aliases: ['parthenon', 'athens temple', 'acropolis', 'greek temple'],
+    city: 'Athens, Greece', year: 'Built 447-432 BC', icon: '🏛️',
+    build: buildParthenon, camera: {x:8,y:6,z:18},
+  },
+  {
+    id: 'pisa',
+    name: 'Leaning Tower of Pisa',
+    aliases: ['pisa', 'leaning tower', 'tower of pisa', 'leaning tower of pisa'],
+    city: 'Pisa, Italy', year: 'Built 1173-1372', icon: '🏰',
+    build: buildLeaningTower, camera: {x:6,y:8,z:16},
   },
 ];
+
+// ─── Search helpers ───────────────────────────────────────────────────────────
+
+function searchLandmarks(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return LANDMARKS.slice(0, 6); // show first 6 as defaults
+  return LANDMARKS.filter(lm =>
+    lm.aliases.some(a => a.includes(q)) || lm.name.toLowerCase().includes(q) || lm.city.toLowerCase().includes(q)
+  );
+}
 
 // ─── Scene setup ─────────────────────────────────────────────────────────────
 
 const wrap = document.getElementById('canvas-wrap');
-const W = wrap.clientWidth || 800;
-const H = wrap.clientHeight || 600;
-
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(W, H);
+renderer.setSize(wrap.clientWidth || 800, wrap.clientHeight || 600);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -329,776 +677,155 @@ wrap.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0b0c10);
-scene.fog = new THREE.Fog(0x0b0c10, 40, 80);
+scene.fog = new THREE.Fog(0x0b0c10, 40, 90);
 
-const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(45, (wrap.clientWidth||800)/(wrap.clientHeight||600), 0.1, 200);
 camera.position.set(8, 8, 20);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.minDistance = 5;
-controls.maxDistance = 60;
+controls.minDistance = 4;
+controls.maxDistance = 80;
 controls.maxPolarAngle = Math.PI / 2 + 0.1;
 
-// Lighting
-const ambientLight = new THREE.AmbientLight(0x8090c0, 0.6);
-scene.add(ambientLight);
+// Lights
+scene.add(new THREE.AmbientLight(0x8090c0, 0.6));
+const sun = new THREE.DirectionalLight(0xfff5e0, 2.2);
+sun.position.set(12, 20, 10);
+sun.castShadow = true;
+sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 80;
+sun.shadow.camera.left = -25; sun.shadow.camera.right = 25;
+sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
+sun.shadow.mapSize.set(2048, 2048);
+scene.add(sun);
+scene.add(Object.assign(new THREE.DirectionalLight(0x4060ff, 0.5), {position: new THREE.Vector3(-10,5,-8)}));
 
-const sunLight = new THREE.DirectionalLight(0xfff5e0, 2.2);
-sunLight.position.set(12, 20, 10);
-sunLight.castShadow = true;
-sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 80;
-sunLight.shadow.camera.left = -20;
-sunLight.shadow.camera.right = 20;
-sunLight.shadow.camera.top = 20;
-sunLight.shadow.camera.bottom = -20;
-sunLight.shadow.mapSize.set(2048, 2048);
-scene.add(sunLight);
-
-const fillLight = new THREE.DirectionalLight(0x4060ff, 0.5);
-fillLight.position.set(-10, 5, -8);
-scene.add(fillLight);
-
-// Ground plane
-const groundGeo = new THREE.CircleGeometry(30, 64);
-const groundMat = new THREE.MeshStandardMaterial({
-  color: 0x16181f,
-  roughness: 0.9,
-  metalness: 0.1,
-});
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
+// Ground
+const ground = new THREE.Mesh(new THREE.CircleGeometry(35,64), new THREE.MeshStandardMaterial({color:0x16181f,roughness:0.9,metalness:0.1}));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
 scene.add(ground);
+scene.add(Object.assign(new THREE.GridHelper(35,22,0x252733,0x1a1c28), {position: new THREE.Vector3(0,0.01,0)}));
 
-// Ground grid lines
-const gridHelper = new THREE.GridHelper(30, 20, 0x252733, 0x1a1c28);
-gridHelper.position.y = 0.01;
-scene.add(gridHelper);
-
-// ─── Landmark geometry builders ───────────────────────────────────────────────
-
-function mat(color, roughness = 0.8, metalness = 0.1) {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
-}
-
-function buildEiffelTower() {
-  const g = new THREE.Group();
-
-  const ironDark  = mat(0x3b2f1e, 0.75, 0.35);
-  const ironMid   = mat(0x5c4a35, 0.70, 0.30);
-
-  // 4 arched legs at base (splayed outward)
-  const legData = [
-    { dx:  1.6, dz:  1.6 },
-    { dx: -1.6, dz:  1.6 },
-    { dx:  1.6, dz: -1.6 },
-    { dx: -1.6, dz: -1.6 },
-  ];
-  legData.forEach(({ dx, dz }) => {
-    // Lower leg (angled from base ~2.2 out to platform ~0.4 in)
-    const pts = [];
-    pts.push(new THREE.Vector3(dx, 0, dz));
-    pts.push(new THREE.Vector3(dx * 0.35, 4.5, dz * 0.35));
-    const curve = new THREE.CatmullRomCurve3(pts);
-    const legGeo = new THREE.TubeGeometry(curve, 6, 0.14, 6, false);
-    const leg = new THREE.Mesh(legGeo, ironDark);
-    leg.castShadow = true;
-    g.add(leg);
-
-    // Diagonal braces
-    for (let j = 0; j < 3; j++) {
-      const t = j / 3;
-      const braceGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.6, 4);
-      const brace = new THREE.Mesh(braceGeo, ironMid);
-      const p0 = curve.getPoint(t);
-      const p1 = curve.getPoint(t + 0.15);
-      brace.position.lerpVectors(p0, p1, 0.5);
-      brace.lookAt(p1);
-      brace.rotateX(Math.PI / 2);
-      g.add(brace);
-    }
-  });
-
-  // First floor platform (y=4.5)
-  const plat1 = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.28, 3.0), ironDark);
-  plat1.position.y = 4.5;
-  plat1.castShadow = true;
-  g.add(plat1);
-
-  // Railing around first platform
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2;
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.35, 0.06), ironMid);
-    post.position.set(Math.cos(a) * 1.4, 4.8, Math.sin(a) * 1.4);
-    g.add(post);
-  }
-
-  // Second section legs (tapering from plat1 to plat2 at y=8)
-  legData.forEach(({ dx, dz }) => {
-    const pts = [
-      new THREE.Vector3(dx * 0.22, 4.5, dz * 0.22),
-      new THREE.Vector3(dx * 0.06, 8.0, dz * 0.06),
-    ];
-    const curve = new THREE.CatmullRomCurve3(pts);
-    const legGeo = new THREE.TubeGeometry(curve, 4, 0.09, 5, false);
-    const leg = new THREE.Mesh(legGeo, ironDark);
-    leg.castShadow = true;
-    g.add(leg);
-  });
-
-  // Second platform (y=8)
-  const plat2 = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.22, 1.5), ironDark);
-  plat2.position.y = 8;
-  plat2.castShadow = true;
-  g.add(plat2);
-
-  // Upper tower cylinder (y=8 to y=12)
-  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.65, 4, 10), ironDark);
-  upper.position.y = 10;
-  upper.castShadow = true;
-  g.add(upper);
-
-  // Third platform
-  const plat3 = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.2, 12), ironMid);
-  plat3.position.y = 12;
-  g.add(plat3);
-
-  // Spire
-  const spire = new THREE.Mesh(new THREE.ConeGeometry(0.22, 3.5, 8), ironDark);
-  spire.position.y = 13.75;
-  spire.castShadow = true;
-  g.add(spire);
-
-  // Antenna tip
-  const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 5), ironMid);
-  tip.position.y = 15.6;
-  g.add(tip);
-
-  return g;
-}
-
-function buildColosseum() {
-  const g = new THREE.Group();
-
-  const travertine = mat(0xc8a76a, 0.92);
-  const traverDark  = mat(0x9e8350, 0.95);
-  const shadow      = mat(0x4a3d28, 0.98);
-
-  const a = 6.5; // semi-major axis (E-W)
-  const b = 5.2; // semi-minor axis (N-S)
-
-  function ellipsePoint(angle) {
-    return new THREE.Vector2(Math.cos(angle) * a, Math.sin(angle) * b);
-  }
-
-  const NUM_FLOORS = 3;
-  const FLOOR_H    = 1.6;
-  const NUM_BAYS   = 32;
-
-  for (let floor = 0; floor < NUM_FLOORS; floor++) {
-    const y = floor * FLOOR_H;
-    const scaleFactor = 1 - floor * 0.02;
-
-    // Outer wall band for this floor
-    const wallShape = new THREE.Shape();
-    for (let i = 0; i <= NUM_BAYS; i++) {
-      const ang = (i / NUM_BAYS) * Math.PI * 2;
-      const p = ellipsePoint(ang);
-      if (i === 0) wallShape.moveTo(p.x * scaleFactor, p.y * scaleFactor);
-      else wallShape.lineTo(p.x * scaleFactor, p.y * scaleFactor);
-    }
-    const holeShape = new THREE.Path();
-    for (let i = 0; i <= NUM_BAYS; i++) {
-      const ang = (i / NUM_BAYS) * Math.PI * 2;
-      const innerA = (a - 1.0) * scaleFactor;
-      const innerB = (b - 0.8) * scaleFactor;
-      const px = Math.cos(ang) * innerA;
-      const py = Math.sin(ang) * innerB;
-      if (i === 0) holeShape.moveTo(px, py);
-      else holeShape.lineTo(px, py);
-    }
-    wallShape.holes.push(holeShape);
-    const wallGeo = new THREE.ExtrudeGeometry(wallShape, { depth: FLOOR_H * 0.55, bevelEnabled: false });
-    wallGeo.rotateX(Math.PI / 2);
-    const wallMesh = new THREE.Mesh(wallGeo, travertine);
-    wallMesh.position.y = y;
-    wallMesh.castShadow = true;
-    wallMesh.receiveShadow = true;
-    g.add(wallMesh);
-
-    // Arch openings: vertical pilasters at bay boundaries
-    for (let i = 0; i < NUM_BAYS; i++) {
-      const ang = (i / NUM_BAYS) * Math.PI * 2;
-      const p = ellipsePoint(ang);
-      const px = p.x * scaleFactor;
-      const pz = p.y * scaleFactor;
-      const r = Math.sqrt(px * px + pz * pz);
-
-      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.22, FLOOR_H, 0.22), traverDark);
-      pillar.position.set(px * 0.975, y + FLOOR_H / 2, pz * 0.975);
-      pillar.castShadow = true;
-      g.add(pillar);
-
-      // Arch key stone / void suggestion (darker strip)
-      if (floor < NUM_FLOORS - 1) {
-        const midAng = (i + 0.5) / NUM_BAYS * Math.PI * 2;
-        const mx = Math.cos(midAng) * a * scaleFactor;
-        const mz = Math.sin(midAng) * b * scaleFactor;
-        const arch = new THREE.Mesh(new THREE.BoxGeometry(0.18, FLOOR_H * 0.58, 0.12), shadow);
-        arch.position.set(mx * 0.965, y + FLOOR_H * 0.34, mz * 0.965);
-        arch.lookAt(arch.position.x * 2, arch.position.y, arch.position.z * 2);
-        g.add(arch);
-      }
-    }
-
-    // Floor slab (horizontal ring top face)
-    const slabGeo = new THREE.RingGeometry(
-      Math.sqrt(((a - 1.0) * scaleFactor) ** 2 + ((b - 0.8) * scaleFactor) ** 2) * 0.72,
-      Math.sqrt((a * scaleFactor) ** 2 + (b * scaleFactor) ** 2) * 0.78,
-      64
-    );
-    slabGeo.rotateX(-Math.PI / 2);
-    const slab = new THREE.Mesh(slabGeo, travertine);
-    slab.position.y = y + FLOOR_H * 0.56;
-    g.add(slab);
-  }
-
-  // Top attic
-  const atticY = NUM_FLOORS * FLOOR_H;
-  const atticShape = new THREE.Shape();
-  for (let i = 0; i <= NUM_BAYS; i++) {
-    const ang = (i / NUM_BAYS) * Math.PI * 2;
-    const p = ellipsePoint(ang);
-    const s = 0.96;
-    if (i === 0) atticShape.moveTo(p.x * s, p.y * s);
-    else atticShape.lineTo(p.x * s, p.y * s);
-  }
-  const atticHole = new THREE.Path();
-  for (let i = 0; i <= NUM_BAYS; i++) {
-    const ang = (i / NUM_BAYS) * Math.PI * 2;
-    const px = Math.cos(ang) * (a - 1.0) * 0.96;
-    const py = Math.sin(ang) * (b - 0.8) * 0.96;
-    if (i === 0) atticHole.moveTo(px, py);
-    else atticHole.lineTo(px, py);
-  }
-  atticShape.holes.push(atticHole);
-  const atticGeo = new THREE.ExtrudeGeometry(atticShape, { depth: 0.9, bevelEnabled: false });
-  atticGeo.rotateX(Math.PI / 2);
-  const attic = new THREE.Mesh(atticGeo, traverDark);
-  attic.position.y = atticY;
-  attic.castShadow = true;
-  g.add(attic);
-
-  return g;
-}
-
-function buildBigBen() {
-  const g = new THREE.Group();
-
-  const limestone = mat(0xc8c0a0, 0.9);
-  const roofMat   = mat(0x4a6040, 0.8);
-  const clockFace = mat(0xf0edd8, 0.6);
-  const goldMat   = mat(0xb8922a, 0.4, 0.6);
-  const darkMat   = mat(0x3a3530, 0.95);
-
-  // Base podium
-  const podium = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.6, 3.2), limestone);
-  podium.position.y = 0.3;
-  podium.castShadow = true;
-  g.add(podium);
-
-  // Main tower body (tapers slightly)
-  const tower = new THREE.Mesh(new THREE.BoxGeometry(2.6, 9, 2.6), limestone);
-  tower.position.y = 5.1;
-  tower.castShadow = true;
-  tower.receiveShadow = true;
-  g.add(tower);
-
-  // Gothic window arches on each face
-  [-1, 1].forEach(sx => {
-    [-1, 1].forEach(sz => {
-      // Tall pointed window
-      [2, 5, 8].forEach(wy => {
-        const window_ = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.1), darkMat);
-        window_.position.set(sx * 1.25, wy, sz * 1.25);
-        if (Math.abs(sx) > 0 && Math.abs(sz) === 0) window_.rotation.y = Math.PI / 2;
-        g.add(window_);
-      });
-    });
-  });
-
-  // Belfry stage
-  const belfry = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.2, 2.8), limestone);
-  belfry.position.y = 10.2;
-  belfry.castShadow = true;
-  g.add(belfry);
-
-  // Clock stage
-  const clockStage = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.8, 2.8), clockFace);
-  clockStage.position.y = 11.7;
-  clockStage.castShadow = true;
-  g.add(clockStage);
-
-  // 4 clock faces
-  const clockDirs = [
-    { pos: [0, 11.7, 1.42], rot: [0, 0, 0] },
-    { pos: [0, 11.7, -1.42], rot: [0, Math.PI, 0] },
-    { pos: [1.42, 11.7, 0], rot: [0, Math.PI / 2, 0] },
-    { pos: [-1.42, 11.7, 0], rot: [0, -Math.PI / 2, 0] },
-  ];
-  clockDirs.forEach(({ pos, rot }) => {
-    // Clock ring
-    const ringGeo = new THREE.RingGeometry(0.55, 0.65, 32);
-    ringGeo.rotateX(Math.PI / 2);
-    const ring = new THREE.Mesh(ringGeo, goldMat);
-    ring.position.set(...pos);
-    ring.rotation.set(...rot);
-    g.add(ring);
-
-    // Clock face fill
-    const face = new THREE.Mesh(new THREE.CircleGeometry(0.55, 32), clockFace);
-    face.position.set(...pos);
-    face.rotation.set(...rot);
-    face.position.x += rot[1] === 0 ? 0.001 : 0;
-    g.add(face);
-
-    // Hour hand
-    const hour = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.28, 0.02), darkMat);
-    hour.position.set(...pos);
-    hour.rotation.set(...rot);
-    hour.rotation.z += 0.5;
-    hour.position.y += 0.08;
-    g.add(hour);
-
-    // Minute hand
-    const min_ = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.40, 0.02), darkMat);
-    min_.position.set(...pos);
-    min_.rotation.set(...rot);
-    min_.rotation.z -= 0.8;
-    min_.position.y += 0.12;
-    g.add(min_);
-  });
-
-  // Decorative corbels at top of clock stage
-  const corbels = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.3, 3.0), goldMat);
-  corbels.position.y = 12.75;
-  g.add(corbels);
-
-  // Octagonal spire base
-  const spireBase = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.4, 0.8, 8), roofMat);
-  spireBase.position.y = 13.3;
-  spireBase.castShadow = true;
-  g.add(spireBase);
-
-  // Gothic spire
-  const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 1.0, 5.5, 8), roofMat);
-  spire.position.y = 16.45;
-  spire.castShadow = true;
-  g.add(spire);
-
-  // Flag pole
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 5), goldMat);
-  pole.position.y = 19.8;
-  g.add(pole);
-
-  return g;
-}
-
-function buildTajMahal() {
-  const g = new THREE.Group();
-
-  const marble = mat(0xf5f0e8, 0.3, 0.05);
-  const marbleShadow = mat(0xddd5c0, 0.4, 0.05);
-  const inlay  = mat(0xb8d4c8, 0.5, 0.1);
-  const arch   = mat(0x1a1814, 0.95);
-
-  // Raised plinth (square base platform)
-  const plinth = new THREE.Mesh(new THREE.BoxGeometry(11, 0.7, 11), marbleShadow);
-  plinth.position.y = 0.35;
-  plinth.castShadow = true;
-  plinth.receiveShadow = true;
-  g.add(plinth);
-
-  // Terrace
-  const terrace = new THREE.Mesh(new THREE.BoxGeometry(10, 0.5, 10), marble);
-  terrace.position.y = 0.95;
-  terrace.castShadow = true;
-  g.add(terrace);
-
-  // 4 corner minarets
-  const minaretPositions = [
-    [-4.2, 0, -4.2], [4.2, 0, -4.2],
-    [-4.2, 0, 4.2],  [4.2, 0, 4.2],
-  ];
-  minaretPositions.forEach(([mx, my, mz]) => {
-    // Base
-    const mBase = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.45, 0.4, 12), marbleShadow);
-    mBase.position.set(mx, 1.4, mz);
-    g.add(mBase);
-    // Shaft
-    const mShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.38, 5.5, 12), marble);
-    mShaft.position.set(mx, 4.45, mz);
-    mShaft.castShadow = true;
-    g.add(mShaft);
-    // Balcony rings (3 levels)
-    [2.5, 4.0, 5.5].forEach(bh => {
-      const balc = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.18, 12), marbleShadow);
-      balc.position.set(mx, 1.6 + bh, mz);
-      g.add(balc);
-    });
-    // Finial dome
-    const mDome = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2), marble);
-    mDome.position.set(mx, 7.5, mz);
-    mDome.castShadow = true;
-    g.add(mDome);
-    // Spire
-    const mSpire = new THREE.Mesh(new THREE.ConeGeometry(0.08, 1.0, 6), marbleShadow);
-    mSpire.position.set(mx, 8.3, mz);
-    g.add(mSpire);
-  });
-
-  // Main building body
-  const body = new THREE.Mesh(new THREE.BoxGeometry(5.5, 3.5, 5.5), marble);
-  body.position.y = 2.95;
-  body.castShadow = true;
-  g.add(body);
-
-  // Cut-in arched niches on 4 faces (dark recesses)
-  const archDirs = [
-    { pos: [0, 2.8, 2.76], rot: [0, 0, 0] },
-    { pos: [0, 2.8, -2.76], rot: [0, Math.PI, 0] },
-    { pos: [2.76, 2.8, 0], rot: [0, Math.PI / 2, 0] },
-    { pos: [-2.76, 2.8, 0], rot: [0, -Math.PI / 2, 0] },
-  ];
-  archDirs.forEach(({ pos, rot }) => {
-    const archMesh = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.5, 0.1), arch);
-    archMesh.position.set(...pos);
-    archMesh.rotation.set(...rot);
-    g.add(archMesh);
-
-    // Pointed arch top
-    const archTop = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.7, 3), arch);
-    archTop.position.set(pos[0], pos[1] + 1.5, pos[2]);
-    archTop.rotation.set(...rot);
-    archTop.rotation.y = rot[1];
-    archTop.rotation.z = rot[2];
-    archTop.position.x = pos[0];
-    archTop.position.z = pos[2];
-    if (rot[1] === Math.PI / 2 || rot[1] === -Math.PI / 2) {
-      archTop.position.x += (rot[1] > 0 ? 0.05 : -0.05);
-    } else {
-      archTop.position.z += (rot[1] === Math.PI ? -0.05 : 0.05);
-    }
-    g.add(archTop);
-  });
-
-  // Side turrets (4 corner octagonal)
-  const turretPositions = [[-2, 4.7, -2], [2, 4.7, -2], [-2, 4.7, 2], [2, 4.7, 2]];
-  turretPositions.forEach(([tx, ty, tz]) => {
-    const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 1.0, 8), marble);
-    turret.position.set(tx, ty, tz);
-    g.add(turret);
-    const turretDome = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), marble);
-    turretDome.position.set(tx, ty + 0.55, tz);
-    g.add(turretDome);
-    const turretSpire = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.8, 6), marbleShadow);
-    turretSpire.position.set(tx, ty + 1.1, tz);
-    g.add(turretSpire);
-  });
-
-  // Octagonal drum below main dome
-  const drum = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.6, 0.9, 8), marble);
-  drum.position.y = 5.15;
-  drum.castShadow = true;
-  g.add(drum);
-
-  // Main bulbous dome (onion shape via lathe)
-  const domePts = [];
-  for (let i = 0; i <= 20; i++) {
-    const t = i / 20;
-    // Onion dome profile: wide at base, narrows sharply, then bulges, then tapers
-    const r = Math.sin(t * Math.PI) * 1.75 * (1 + 0.35 * Math.sin(t * Math.PI * 1.2));
-    const h = t * 3.5;
-    domePts.push(new THREE.Vector2(r, h));
-  }
-  const domeGeo = new THREE.LatheGeometry(domePts, 24);
-  const dome = new THREE.Mesh(domeGeo, marble);
-  dome.position.y = 5.6;
-  dome.castShadow = true;
-  g.add(dome);
-
-  // Finial spire
-  const finSpire = new THREE.Mesh(new THREE.ConeGeometry(0.1, 1.2, 6), marbleShadow);
-  finSpire.position.y = 9.5;
-  g.add(finSpire);
-  const finTip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), marbleShadow);
-  finTip.position.y = 10.1;
-  g.add(finTip);
-
-  // Inlay decoration band
-  const inlayBand = new THREE.Mesh(new THREE.BoxGeometry(5.52, 0.12, 5.52), inlay);
-  inlayBand.position.y = 4.7;
-  g.add(inlayBand);
-
-  return g;
-}
-
-function buildStatueOfLiberty() {
-  const g = new THREE.Group();
-
-  const granite  = mat(0x6a6560, 0.9);
-  const concrete = mat(0x9a9285, 0.85);
-  const copper   = mat(0x4a8a72, 0.8, 0.15);  // patina green
-  const coppDark = mat(0x3a7060, 0.85, 0.15);
-
-  // Star-shaped island base (simplified as low cylinder)
-  const island = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.8, 0.4, 12), granite);
-  island.position.y = 0.2;
-  island.receiveShadow = true;
-  g.add(island);
-
-  // Star fort outline (10-pointed approximation)
-  for (let i = 0; i < 10; i++) {
-    const angle = (i / 10) * Math.PI * 2;
-    const r = i % 2 === 0 ? 3.5 : 2.8;
-    const block = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.5), granite);
-    block.position.set(Math.cos(angle) * r, 0.5, Math.sin(angle) * r);
-    block.rotation.y = angle + Math.PI / 2;
-    block.castShadow = true;
-    g.add(block);
-  }
-
-  // Pedestal lower
-  const pedLower = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.0, 2.8), granite);
-  pedLower.position.y = 1.4;
-  pedLower.castShadow = true;
-  g.add(pedLower);
-
-  // Pedestal upper
-  const pedUpper = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.0, 2.4), concrete);
-  pedUpper.position.y = 3.4;
-  pedUpper.castShadow = true;
-  g.add(pedUpper);
-
-  // Pedestal balcony
-  const balcony = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 2.8), concrete);
-  balcony.position.y = 4.5;
-  g.add(balcony);
-
-  // Pedestal top
-  const pedTop = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 2.0), concrete);
-  pedTop.position.y = 4.85;
-  g.add(pedTop);
-
-  // Figure: robes/lower body
-  const robes = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.85, 3.5, 10), copper);
-  robes.position.y = 6.9;
-  robes.castShadow = true;
-  g.add(robes);
-
-  // Robe folds suggestion
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    const fold = new THREE.Mesh(new THREE.BoxGeometry(0.08, 3.2, 0.08), coppDark);
-    fold.position.set(Math.cos(a) * 0.72, 6.9, Math.sin(a) * 0.72);
-    g.add(fold);
-  }
-
-  // Torso
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.7, 1.8, 10), copper);
-  torso.position.y = 9.5;
-  torso.castShadow = true;
-  g.add(torso);
-
-  // Head (including spiked crown)
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), copper);
-  head.position.y = 10.9;
-  head.castShadow = true;
-  g.add(head);
-
-  // Crown spikes (7 rays)
-  for (let i = 0; i < 7; i++) {
-    const angle = (i / 7) * Math.PI * 2;
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.55, 5), copper);
-    spike.position.set(
-      Math.cos(angle) * 0.38,
-      11.05,
-      Math.sin(angle) * 0.38
-    );
-    spike.rotation.z = Math.atan2(Math.cos(angle), 0.5) * (angle > Math.PI ? -1 : 1);
-    spike.rotation.x = Math.atan2(Math.sin(angle), 0.5) * -1;
-    g.add(spike);
-  }
-
-  // Face suggestion
-  const facePlate = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.28, 0.08), coppDark);
-  facePlate.position.set(0, 10.88, 0.4);
-  g.add(facePlate);
-
-  // Left arm holding tablet
-  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.2, 6), copper);
-  leftArm.position.set(-0.7, 9.5, 0.2);
-  leftArm.rotation.z = 0.4;
-  leftArm.castShadow = true;
-  g.add(leftArm);
-
-  // Tablet (book/law table)
-  const tablet = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.6, 0.1), coppDark);
-  tablet.position.set(-1.0, 9.1, 0.25);
-  tablet.rotation.z = 0.3;
-  g.add(tablet);
-
-  // Right arm (raised, holding torch)
-  const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.0, 6), copper);
-  rightUpperArm.position.set(0.65, 9.8, 0);
-  rightUpperArm.rotation.z = -1.1;
-  rightUpperArm.castShadow = true;
-  g.add(rightUpperArm);
-
-  // Forearm (nearly vertical)
-  const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.10, 0.8, 6), copper);
-  forearm.position.set(1.35, 10.5, 0);
-  forearm.rotation.z = -0.3;
-  forearm.castShadow = true;
-  g.add(forearm);
-
-  // Torch handle
-  const torchHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 6), coppDark);
-  torchHandle.position.set(1.55, 11.15, 0);
-  g.add(torchHandle);
-
-  // Torch cup
-  const torchCup = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.08, 0.25, 8), coppDark);
-  torchCup.position.set(1.6, 11.55, 0);
-  g.add(torchCup);
-
-  // Flame (warm glow)
-  const flameMat = mat(0xffcc44, 0.1, 0.2);
-  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 8), flameMat);
-  flame.position.set(1.62, 11.85, 0);
-  g.add(flame);
-
-  // Point light from flame
-  const flameLight = new THREE.PointLight(0xffaa22, 0.8, 5);
-  flameLight.position.set(1.62, 11.85, 0);
-  g.add(flameLight);
-
-  return g;
-}
-
-// ─── UI setup ────────────────────────────────────────────────────────────────
-
-let currentLandmark = null;
 let currentGroup = null;
+let currentLandmark = null;
 
-const sidebar = document.getElementById('sidebar');
-const infoName = document.getElementById('info-name');
-const infoMeta = document.getElementById('info-meta');
-
-LANDMARKS.forEach((lm, idx) => {
-  const card = document.createElement('div');
-  card.className = 'landmark-card';
-  card.dataset.id = lm.id;
-  card.innerHTML = `
-    <span class="card-icon">${lm.icon}</span>
-    <div class="card-text">
-      <div class="card-name">${lm.name}</div>
-      <div class="card-city">${lm.city}</div>
-    </div>
-  `;
-  card.addEventListener('click', () => selectLandmark(idx));
-  sidebar.appendChild(card);
-});
-
-function selectLandmark(idx) {
-  const lm = LANDMARKS[idx];
+function selectLandmark(lm) {
   if (currentGroup) scene.remove(currentGroup);
-
   currentLandmark = lm;
   currentGroup = lm.build();
-  currentGroup.traverse(o => {
-    if (o.isMesh) {
-      o.castShadow = true;
-      o.receiveShadow = true;
-    }
-  });
+  currentGroup.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   scene.add(currentGroup);
 
-  // Update info overlay
-  infoName.textContent = lm.name;
-  infoMeta.textContent = `${lm.city} · ${lm.year}`;
+  document.getElementById('info-name').textContent = lm.name;
+  document.getElementById('info-meta').textContent = `${lm.city} · ${lm.year}`;
+  document.getElementById('info-overlay').classList.add('visible');
+  document.getElementById('hint').classList.add('visible');
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('dl-btn').disabled = false;
 
-  // Animate camera to landmark-specific position
+  // Camera move
   const target = new THREE.Vector3(lm.camera.x, lm.camera.y, lm.camera.z);
-  controls.target.set(0, 5, 0);
-
-  // Smooth camera move
+  controls.target.set(0, Math.max(lm.camera.y * 0.4, 4), 0);
   const from = camera.position.clone();
   let t = 0;
-  const animCam = () => {
-    t += 0.04;
-    if (t >= 1) { camera.position.copy(target); return; }
-    camera.position.lerpVectors(from, target, t * t * (3 - 2 * t)); // smoothstep
-    requestAnimationFrame(animCam);
-  };
-  animCam();
-
-  // Update card highlight
-  document.querySelectorAll('.landmark-card').forEach((el, i) => {
-    el.classList.toggle('active', i === idx);
-  });
+  const anim = () => { t += 0.04; if (t >= 1) { camera.position.copy(target); return; } camera.position.lerpVectors(from, target, t*t*(3-2*t)); requestAnimationFrame(anim); };
+  anim();
 }
 
-// ─── Download ────────────────────────────────────────────────────────────────
+// ─── Search UI ────────────────────────────────────────────────────────────────
 
-document.getElementById('dl-btn').addEventListener('click', () => {
-  if (!currentGroup) {
-    alert('Select a landmark first.');
+const searchInput = document.getElementById('search-input');
+const sugBox = document.getElementById('suggestions');
+const noResults = document.getElementById('no-results');
+let selIdx = -1;
+
+function renderSuggestions(results) {
+  // Clear existing suggestion items
+  sugBox.querySelectorAll('.suggestion').forEach(el => el.remove());
+  selIdx = -1;
+
+  if (results.length === 0) {
+    noResults.style.display = 'block';
+    sugBox.classList.add('open');
     return;
   }
-  const exporter = new GLTFExporter();
-  exporter.parse(
-    currentGroup,
-    (gltf) => {
-      const blob = new Blob([gltf], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${currentLandmark.id}.glb`;
-      a.click();
-      URL.revokeObjectURL(url);
-    },
-    (err) => console.error('Export error:', err),
-    { binary: true }
-  );
-});
+  noResults.style.display = 'none';
 
-// ─── Render loop ─────────────────────────────────────────────────────────────
-
-function animate() {
-  requestAnimationFrame(animate);
-  controls.update();
-  renderer.render(scene, camera);
+  results.forEach((lm, i) => {
+    const div = document.createElement('div');
+    div.className = 'suggestion';
+    div.innerHTML = `<span class="sug-icon">${lm.icon}</span><div><div class="sug-name">${lm.name}</div><div class="sug-city">${lm.city}</div></div>`;
+    div.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      searchInput.value = lm.name;
+      sugBox.classList.remove('open');
+      selectLandmark(lm);
+    });
+    sugBox.appendChild(div);
+  });
+  sugBox.classList.add('open');
 }
-animate();
 
-// ─── Resize ──────────────────────────────────────────────────────────────────
-
-const ro = new ResizeObserver(() => {
-  const w = wrap.clientWidth;
-  const h = wrap.clientHeight;
-  renderer.setSize(w, h);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim();
+  if (!q) { sugBox.classList.remove('open'); return; }
+  renderSuggestions(searchLandmarks(q));
 });
-ro.observe(wrap);
 
-// ─── Auto-select first landmark ──────────────────────────────────────────────
+searchInput.addEventListener('focus', () => {
+  const q = searchInput.value.trim();
+  if (q) renderSuggestions(searchLandmarks(q));
+  else { sugBox.classList.remove('open'); }
+});
 
-selectLandmark(0);
+searchInput.addEventListener('blur', () => {
+  setTimeout(() => sugBox.classList.remove('open'), 150);
+});
+
+searchInput.addEventListener('keydown', (e) => {
+  const items = sugBox.querySelectorAll('.suggestion');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    selIdx = Math.min(selIdx+1, items.length-1);
+    items.forEach((el,i) => el.classList.toggle('selected', i===selIdx));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    selIdx = Math.max(selIdx-1, 0);
+    items.forEach((el,i) => el.classList.toggle('selected', i===selIdx));
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (selIdx >= 0 && items[selIdx]) {
+      items[selIdx].dispatchEvent(new MouseEvent('mousedown'));
+    } else {
+      const results = searchLandmarks(searchInput.value);
+      if (results.length > 0) { searchInput.value = results[0].name; sugBox.classList.remove('open'); selectLandmark(results[0]); }
+    }
+  } else if (e.key === 'Escape') {
+    sugBox.classList.remove('open');
+  }
+});
+
+// ─── Download ─────────────────────────────────────────────────────────────────
+
+document.getElementById('dl-btn').addEventListener('click', () => {
+  if (!currentGroup) return;
+  new GLTFExporter().parse(currentGroup, (gltf) => {
+    const blob = new Blob([gltf], {type:'application/octet-stream'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=`${currentLandmark.id}.glb`; a.click();
+    URL.revokeObjectURL(url);
+  }, (err)=>console.error(err), {binary:true});
+});
+
+// ─── Render loop & resize ─────────────────────────────────────────────────────
+
+(function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera); })();
+
+new ResizeObserver(() => {
+  const w=wrap.clientWidth, h=wrap.clientHeight;
+  renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
+}).observe(wrap);
 </script>
 </body>
 </html>
