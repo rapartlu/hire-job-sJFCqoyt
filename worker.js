@@ -173,7 +173,7 @@ const HTML = `<!DOCTYPE html>
   </div>
 
   <footer>
-    <span>Built by Fleet &middot; Alpha access &middot; v4.1</span>
+    <span>Built by Fleet &middot; Alpha access &middot; v4.2</span>
     <span><a href="https://autonomous-fleet.workers.dev" target="_blank" rel="noopener">autonomous-fleet.workers.dev</a></span>
   </footer>
 </div>
@@ -264,7 +264,6 @@ function doSearch(q) {
 function selectResult(item) {
   closeDropdown();
   emptyState.style.display = 'none';
-  embedIframe.style.display = 'none';
   loadingLabel.textContent = 'Loading "' + item.name + '"...';
   loadingOverlay.classList.add('visible');
 
@@ -275,15 +274,21 @@ function selectResult(item) {
   document.getElementById('sidebar-page-link').href = item.pageUrl || '#';
   sidebar.classList.add('open');
 
-  // Keep spinner visible until iframe load event fires (not a fixed timer)
+  // Show the iframe immediately so the browser actually starts loading it.
+  // A display:none iframe is not loaded by some browsers (notably iOS Safari)
+  // until it becomes visible, so its onload never fires and the spinner hangs.
+  // The opaque loading overlay (z-index above the iframe) covers it until ready.
+  embedIframe.style.display = 'block';
+
+  // Safety net: clear the spinner after a few seconds even if onload is missed.
+  // The Sketchfab embed shows its own model loader once the page is up, so we
+  // do not need to wait for the WebGL model itself.
   const fallbackTimer = setTimeout(() => {
-    embedIframe.style.display = 'block';
     loadingOverlay.classList.remove('visible');
-  }, 25000);
+  }, 6000);
 
   embedIframe.onload = () => {
     clearTimeout(fallbackTimer);
-    embedIframe.style.display = 'block';
     loadingOverlay.classList.remove('visible');
   };
 
