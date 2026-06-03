@@ -5,14 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Landmark Viewer</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8F%9B%EF%B8%8F%3C/text%3E%3C/svg%3E">
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://esm.sh/three@0.167.0",
-      "three/addons/": "https://esm.sh/three@0.167.0/examples/jsm/"
-    }
-  }
-  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -104,6 +96,22 @@
     }
     #canvas-wrap canvas { display: block; width: 100% !important; height: 100% !important; touch-action: none; }
 
+    /* Loader */
+    #loader {
+      position: absolute; inset: 0; z-index: 50;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; background: var(--bg); padding: 24px; text-align: center;
+    }
+    #loader .spinner {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loader-text { font-size: 13px; color: var(--muted); max-width: 320px; line-height: 1.5; }
+    #loader.error .spinner { display: none; }
+    #loader.error #loader-text { color: var(--accent2); }
+
     /* Empty state */
     #empty-state {
       position: absolute; inset: 0; display: flex;
@@ -165,6 +173,7 @@
   </div>
 
   <main id="canvas-wrap">
+    <div id="loader"><div class="spinner"></div><p id="loader-text">Loading 3D engine&hellip;</p></div>
     <div id="empty-state">
       <div class="icon">🏛️</div>
       <p>Search for a landmark above to load its 3D model.</p>
@@ -178,14 +187,37 @@
     <span>&middot;</span>
     <a href="https://hire.autonomous-fleet.workers.dev" target="_blank" rel="noopener">hire.autonomous-fleet.workers.dev</a>
     <span>&middot;</span>
-    <span>v3</span>
+    <span>v4</span>
   </footer>
 </div>
 
+<script>
+// Watchdog: if the 3D engine module never finishes loading (e.g. the CDN is
+// blocked, or the browser is too old for ES modules), surface a visible message
+// instead of a silent blank canvas. The module sets __viewerReady once it boots.
+window.__viewerReady = false;
+window.__viewerError = null;
+window.addEventListener('error', function (e) {
+  if (e && e.filename && e.filename.indexOf('esm.sh') !== -1) {
+    window.__viewerError = 'Could not reach the 3D engine (esm.sh). Check your connection or any content blocker, then reload.';
+  }
+});
+setTimeout(function () {
+  if (window.__viewerReady) return;
+  var loader = document.getElementById('loader');
+  var text = document.getElementById('loader-text');
+  if (loader) loader.classList.add('error');
+  if (text) text.innerHTML = (window.__viewerError ||
+    'The 3D engine did not load. This can happen on older browsers. Try reloading, or open in an up-to-date Chrome / Safari / Firefox.') +
+    '<br><br><a href="" onclick="location.reload();return false;" style="color:var(--accent)">Reload</a>';
+}, 10000);
+</script>
 <script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+// Direct URL imports (no importmap) — works on every ES-module browser
+// (Safari 11+, not just importmap-capable Safari 16.4+).
+import * as THREE from 'https://esm.sh/three@0.167.0';
+import { OrbitControls } from 'https://esm.sh/three@0.167.0/examples/jsm/controls/OrbitControls.js';
+import { GLTFExporter } from 'https://esm.sh/three@0.167.0/examples/jsm/exporters/GLTFExporter.js';
 
 // ─── Material helpers ─────────────────────────────────────────────────────────
 
@@ -827,6 +859,11 @@ new ResizeObserver(() => {
   const w=wrap.clientWidth, h=wrap.clientHeight;
   renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
 }).observe(wrap);
+
+// Engine booted: clear the loader and unblock the watchdog.
+window.__viewerReady = true;
+const loaderEl = document.getElementById('loader');
+if (loaderEl) loaderEl.style.display = 'none';
 </script>
 </body>
 </html>
