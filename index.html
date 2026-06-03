@@ -829,7 +829,7 @@ searchInput.addEventListener('keydown', (e) => {
   } else if (e.key === 'Enter') {
     e.preventDefault();
     if (selIdx >= 0 && items[selIdx]) {
-      items[selIdx].dispatchEvent(new MouseEvent('mousedown'));
+      items[selIdx].dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, cancelable: true}));
     } else {
       const results = searchLandmarks(searchInput.value);
       if (results.length > 0) { searchInput.value = results[0].name; sugBox.classList.remove('open'); selectLandmark(results[0]); }
