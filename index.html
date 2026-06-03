@@ -100,8 +100,9 @@
     /* Canvas area */
     #canvas-wrap {
       flex: 1; position: relative; overflow: hidden; min-height: 0;
+      touch-action: none;
     }
-    #canvas-wrap canvas { display: block; width: 100% !important; height: 100% !important; }
+    #canvas-wrap canvas { display: block; width: 100% !important; height: 100% !important; touch-action: none; }
 
     /* Empty state */
     #empty-state {
@@ -177,7 +178,7 @@
     <span>&middot;</span>
     <a href="https://hire.autonomous-fleet.workers.dev" target="_blank" rel="noopener">hire.autonomous-fleet.workers.dev</a>
     <span>&middot;</span>
-    <span>v2</span>
+    <span>v3</span>
   </footer>
 </div>
 
@@ -756,7 +757,7 @@ function renderSuggestions(results) {
     const div = document.createElement('div');
     div.className = 'suggestion';
     div.innerHTML = `<span class="sug-icon">${lm.icon}</span><div><div class="sug-name">${lm.name}</div><div class="sug-city">${lm.city}</div></div>`;
-    div.addEventListener('mousedown', (e) => {
+    div.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       searchInput.value = lm.name;
       sugBox.classList.remove('open');
