@@ -4,6 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Landmark Viewer</title>
+  <!-- Three.js + addons are bundled and served from THIS origin (/three-bundle.js),
+       not a third-party CDN. v4-v6 imported from esm.sh / jsDelivr and the module
+       never loaded on the customer's network (CDN blocked, proxied, or timing out),
+       surfacing as the misleading "3D engine did not load" error. Same-origin removes
+       every third-party request, so if the page loads, the engine loads. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/three-bundle.js",
+      "three/addons/controls/OrbitControls.js": "/three-bundle.js",
+      "three/addons/exporters/GLTFExporter.js": "/three-bundle.js"
+    }
+  }
+  </script>
+  <link rel="modulepreload" href="/three-bundle.js">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8F%9B%EF%B8%8F%3C/text%3E%3C/svg%3E">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -62,6 +77,16 @@
     }
     #search-input:focus { border-color: var(--accent); }
     #search-input::placeholder { color: var(--muted); }
+    #search-input:disabled { opacity: 0.7; cursor: wait; }
+    /* While the engine loads, swap the magnifier for a small spinner so the
+       search bar itself shows it is not ready yet (the canvas loader is hidden
+       behind the search bar on mobile). */
+    #search-bar.loading #search-icon {
+      width: 15px; height: 15px; border-radius: 50%;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      animation: spin-centered 0.8s linear infinite; font-size: 0;
+    }
+    @keyframes spin-centered { to { transform: translateY(-50%) rotate(360deg); } }
     #search-icon {
       position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
       color: var(--muted); font-size: 16px; pointer-events: none;
@@ -162,9 +187,9 @@
     <button id="dl-btn" disabled>&#8595; Download .glb</button>
   </header>
 
-  <div id="search-bar">
+  <div id="search-bar" class="loading">
     <div id="search-wrap">
-      <input id="search-input" type="text" placeholder="Search any landmark — try &quot;Big Ben&quot; or &quot;Pyramid&quot;..." autocomplete="off" spellcheck="false">
+      <input id="search-input" type="text" placeholder="Starting 3D engine&hellip;" autocomplete="off" spellcheck="false" disabled>
       <span id="search-icon">&#x1F50D;</span>
       <div id="suggestions">
         <div id="no-results">No landmarks found. More coming soon.</div>
@@ -187,37 +212,58 @@
     <span>&middot;</span>
     <a href="https://hire.autonomous-fleet.workers.dev" target="_blank" rel="noopener">hire.autonomous-fleet.workers.dev</a>
     <span>&middot;</span>
-    <span>v4</span>
+    <span>v7</span>
   </footer>
 </div>
 
 <script>
-// Watchdog: if the 3D engine module never finishes loading (e.g. the CDN is
-// blocked, or the browser is too old for ES modules), surface a visible message
-// instead of a silent blank canvas. The module sets __viewerReady once it boots.
+// Watchdog. The module sets __viewerReady once it boots successfully. If it
+// hasn't booted by the timeout, show a visible message rather than a silent
+// blank canvas.
+//
+// v4-v6 lesson: the old message blamed the browser / CDN ("open in an up-to-date
+// Chrome"). That was wrong and misleading - the real failure was almost always a
+// runtime exception in module init, or the third-party CDN being blocked, NOT an
+// old browser. The customer was on up-to-date Chrome and still saw it 3 times.
+// v7 serves Three.js from this same origin (no CDN) AND captures the actual
+// thrown error so the message tells the truth instead of guessing.
 window.__viewerReady = false;
 window.__viewerError = null;
+function recordErr(msg) { if (msg && !window.__viewerError) window.__viewerError = String(msg); }
 window.addEventListener('error', function (e) {
-  if (e && e.filename && e.filename.indexOf('esm.sh') !== -1) {
-    window.__viewerError = 'Could not reach the 3D engine (esm.sh). Check your connection or any content blocker, then reload.';
-  }
+  // Module-evaluation throw, or a failed script/module fetch.
+  if (e && e.error && e.error.message) recordErr(e.error.message);
+  else if (e && e.message) recordErr(e.message);
+});
+window.addEventListener('unhandledrejection', function (e) {
+  if (e && e.reason) recordErr(e.reason.message || e.reason);
 });
 setTimeout(function () {
   if (window.__viewerReady) return;
   var loader = document.getElementById('loader');
   var text = document.getElementById('loader-text');
   if (loader) loader.classList.add('error');
-  if (text) text.innerHTML = (window.__viewerError ||
-    'The 3D engine did not load. This can happen on older browsers. Try reloading, or open in an up-to-date Chrome / Safari / Firefox.') +
+  var detail = window.__viewerError
+    ? 'The 3D viewer hit an error while starting:<br><code style="font-size:12px;opacity:0.8">' +
+        window.__viewerError.replace(/[<>&]/g, '') + '</code>'
+    : 'The 3D viewer is taking longer than expected to start. This is usually a slow connection or a content blocker.';
+  if (text) text.innerHTML = detail +
     '<br><br><a href="" onclick="location.reload();return false;" style="color:var(--accent)">Reload</a>';
-}, 10000);
+  // The search box stays disabled until the engine boots; if it never does,
+  // stop spinning and tell the user in the place they are looking.
+  var bar = document.getElementById('search-bar');
+  if (bar) bar.classList.remove('loading');
+  var si = document.getElementById('search-input');
+  if (si) si.placeholder = '3D viewer failed to start — reload the page';
+}, 8000);
 </script>
 <script type="module">
-// Direct URL imports (no importmap) — works on every ES-module browser
-// (Safari 11+, not just importmap-capable Safari 16.4+).
-import * as THREE from 'https://esm.sh/three@0.167.0';
-import { OrbitControls } from 'https://esm.sh/three@0.167.0/examples/jsm/controls/OrbitControls.js';
-import { GLTFExporter } from 'https://esm.sh/three@0.167.0/examples/jsm/exporters/GLTFExporter.js';
+// importmap in the <head> resolves all three specifiers to /three-bundle.js,
+// a same-origin file served by this Worker. No third-party CDN, no runtime
+// build step, no cross-origin requests - the failure mode that dogged v4-v6.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
 // ─── Material helpers ─────────────────────────────────────────────────────────
 
@@ -829,7 +875,7 @@ searchInput.addEventListener('keydown', (e) => {
   } else if (e.key === 'Enter') {
     e.preventDefault();
     if (selIdx >= 0 && items[selIdx]) {
-      items[selIdx].dispatchEvent(new MouseEvent('mousedown'));
+      items[selIdx].dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, cancelable: true}));
     } else {
       const results = searchLandmarks(searchInput.value);
       if (results.length > 0) { searchInput.value = results[0].name; sugBox.classList.remove('open'); selectLandmark(results[0]); }
@@ -864,6 +910,19 @@ new ResizeObserver(() => {
 window.__viewerReady = true;
 const loaderEl = document.getElementById('loader');
 if (loaderEl) loaderEl.style.display = 'none';
+
+// The search box is disabled in the static HTML until this module finishes
+// loading three.js from the CDN. Its event listeners live in this module, so
+// before this point typing and clicking a result do nothing - that was the
+// "I click and nothing happens / is it loading?" bug. Enable it now that the
+// handlers are attached, restore the real placeholder, and focus it.
+const searchBarEl = document.getElementById('search-bar');
+if (searchBarEl) searchBarEl.classList.remove('loading');
+if (searchInput) {
+  searchInput.disabled = false;
+  searchInput.placeholder = 'Search any landmark — try "Big Ben" or "Pyramid"…';
+  searchInput.focus();
+}
 </script>
 </body>
 </html>
