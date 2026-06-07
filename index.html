@@ -212,7 +212,7 @@
     <span>&middot;</span>
     <a href="https://hire.autonomous-fleet.workers.dev" target="_blank" rel="noopener">hire.autonomous-fleet.workers.dev</a>
     <span>&middot;</span>
-    <span>v7</span>
+    <span>v8</span>
   </footer>
 </div>
 
@@ -345,7 +345,7 @@ function buildColosseum() {
 function buildBigBen() {
   const g = new THREE.Group();
   const lime=mat(0xc8c0a0,0.9), roof=mat(0x4a6040,0.8), clock=mat(0xf0edd8,0.6), gold=mat(0xb8922a,0.4,0.6), dk=mat(0x3a3530,0.95);
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3.2,0.6,3.2),lime),{position:{x:0,y:0.3,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.2,0.6,3.2),lime),0,0.3,0));
   const tower=new THREE.Mesh(new THREE.BoxGeometry(2.6,9,2.6),lime); tower.position.y=5.1; g.add(tower);
   const belfry=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.2,2.8),lime); belfry.position.y=10.2; g.add(belfry);
   const cs=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.8,2.8),clock); cs.position.y=11.7; g.add(cs);
@@ -362,44 +362,44 @@ function buildBigBen() {
 function buildTajMahal() {
   const g = new THREE.Group();
   const mb=mat(0xf5f0e8,0.3,0.05), ms=mat(0xddd5c0,0.4,0.05), inl=mat(0xb8d4c8,0.5,0.1), ar=mat(0x1a1814,0.95);
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(11,0.7,11),ms),{position:{x:0,y:0.35,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(10,0.5,10),mb),{position:{x:0,y:0.95,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(11,0.7,11),ms),0,0.35,0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(10,0.5,10),mb),0,0.95,0));
   [[-4.2,0,-4.2],[4.2,0,-4.2],[-4.2,0,4.2],[4.2,0,4.2]].forEach(([mx,,mz])=>{
-    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.45,0.4,12),ms),{position:{x:mx,y:1.4,z:mz}}));
-    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.38,5.5,12),mb),{position:{x:mx,y:4.45,z:mz}}));
-    [2.5,4,5.5].forEach(bh=>{g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.18,12),ms),{position:{x:mx,y:1.6+bh,z:mz}}));});
-    g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.35,10,7,0,Math.PI*2,0,Math.PI/2),mb),{position:{x:mx,y:7.5,z:mz}}));
-    g.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.08,1,6),ms),{position:{x:mx,y:8.3,z:mz}}));
+    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.45,0.4,12),ms),mx,1.4,mz));
+    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.38,5.5,12),mb),mx,4.45,mz));
+    [2.5,4,5.5].forEach(bh=>{g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.18,12),ms),mx,1.6+bh,mz));});
+    g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.35,10,7,0,Math.PI*2,0,Math.PI/2),mb),mx,7.5,mz));
+    g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.08,1,6),ms),mx,8.3,mz));
   });
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(5.5,3.5,5.5),mb),{position:{x:0,y:2.95,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(5.5,3.5,5.5),mb),0,2.95,0));
   [[0,2.8,2.76,0],[0,2.8,-2.76,Math.PI],[2.76,2.8,0,Math.PI/2],[-2.76,2.8,0,-Math.PI/2]].forEach(([px,py,pz,ry])=>{
     const am=new THREE.Mesh(new THREE.BoxGeometry(1.6,2.5,0.1),ar); am.position.set(px,py,pz); am.rotation.y=ry; g.add(am);
   });
   [[-2,4.7,-2],[2,4.7,-2],[-2,4.7,2],[2,4.7,2]].forEach(([tx,ty,tz])=>{
-    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.6,1,8),mb),{position:{x:tx,y:ty,z:tz}}));
-    g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.55,8,6,0,Math.PI*2,0,Math.PI/2),mb),{position:{x:tx,y:ty+0.55,z:tz}}));
-    g.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.1,0.8,6),ms),{position:{x:tx,y:ty+1.1,z:tz}}));
+    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.6,1,8),mb),tx,ty,tz));
+    g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.55,8,6,0,Math.PI*2,0,Math.PI/2),mb),tx,ty+0.55,tz));
+    g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.1,0.8,6),ms),tx,ty+1.1,tz));
   });
   const drum=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.6,0.9,8),mb); drum.position.y=5.15; g.add(drum);
   const pts=[]; for(let i=0;i<=20;i++){const t=i/20;pts.push(new THREE.Vector2(Math.sin(t*Math.PI)*1.75*(1+0.35*Math.sin(t*Math.PI*1.2)),t*3.5));}
   const dome=new THREE.Mesh(new THREE.LatheGeometry(pts,24),mb); dome.position.y=5.6; g.add(dome);
-  g.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.1,1.2,6),ms),{position:{x:0,y:9.5,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.12,8,6),ms),{position:{x:0,y:10.1,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(5.52,0.12,5.52),inl),{position:{x:0,y:4.7,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.1,1.2,6),ms),0,9.5,0));
+  g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.12,8,6),ms),0,10.1,0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(5.52,0.12,5.52),inl),0,4.7,0));
   return g;
 }
 
 function buildStatueOfLiberty() {
   const g = new THREE.Group();
   const gran=mat(0x6a6560,0.9), conc=mat(0x9a9285,0.85), cop=mat(0x4a8a72,0.8,0.15), cdk=mat(0x3a7060,0.85,0.15);
-  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(3.5,3.8,0.4,12),gran),{position:{x:0,y:0.2,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(3.5,3.8,0.4,12),gran),0,0.2,0));
   for(let i=0;i<10;i++){const a=(i/10)*Math.PI*2,r=i%2===0?3.5:2.8;const b=new THREE.Mesh(new THREE.BoxGeometry(1,0.6,0.5),gran);b.position.set(Math.cos(a)*r,0.5,Math.sin(a)*r);b.rotation.y=a+Math.PI/2;g.add(b);}
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2.8,2,2.8),gran),{position:{x:0,y:1.4,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2.4,2,2.4),conc),{position:{x:0,y:3.4,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2,0.5,2),conc),{position:{x:0,y:4.85,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.8,2,2.8),gran),0,1.4,0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.4,2,2.4),conc),0,3.4,0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2,0.5,2),conc),0,4.85,0));
   const robes=new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.85,3.5,10),cop); robes.position.y=6.9; g.add(robes);
-  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.52,0.7,1.8,10),cop),{position:{x:0,y:9.5,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.42,12,10),cop),{position:{x:0,y:10.9,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.52,0.7,1.8,10),cop),0,9.5,0));
+  g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.42,12,10),cop),0,10.9,0));
   for(let i=0;i<7;i++){const a=(i/7)*Math.PI*2;const sp=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.55,5),cop);sp.position.set(Math.cos(a)*0.38,11.05,Math.sin(a)*0.38);sp.rotation.z=Math.atan2(Math.cos(a),0.5)*(a>Math.PI?-1:1);sp.rotation.x=Math.atan2(Math.sin(a),0.5)*-1;g.add(sp);}
   const raUp=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,1,6),cop); raUp.position.set(0.65,9.8,0); raUp.rotation.z=-1.1; g.add(raUp);
   const fa=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,0.8,6),cop); fa.position.set(1.35,10.5,0); fa.rotation.z=-0.3; g.add(fa);
@@ -454,7 +454,7 @@ function buildStonehenge() {
     cap.position.set(Math.cos(a+0.125)*Ri,4.25,Math.sin(a+0.125)*Ri); cap.rotation.y=-a-0.125; g.add(cap);
   }
   // Altar stone
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1,0.25,0.4),st),{position:{x:0,y:0.125,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(1,0.25,0.4),st),0,0.125,0));
   return g;
 }
 
@@ -485,8 +485,8 @@ function buildSydneyOperaHouse() {
   const g = new THREE.Group();
   const tile=mat(0xf8f6f2,0.2,0.05), base=mat(0xe0dcd5,0.7), conc=mat(0xc8c4bc,0.8);
   // Podium base
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(12,0.8,6),base),{position:{x:0,y:0.4,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(11,0.4,5.5),conc),{position:{x:0,y:1,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(12,0.8,6),base),0,0.4,0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(11,0.4,5.5),conc),0,1,0));
 
   // Shell geometry — iconic curved sail shapes
   // Shell 1: large main concert hall shell (3 nested shells)
@@ -588,7 +588,7 @@ function buildParthenon() {
   const g = new THREE.Group();
   const marble=mat(0xf0e8d8,0.5,0.05), cols=mat(0xf8f0e0,0.4,0.05), dark=mat(0xd4c8a8,0.7);
   // Stepped base (stylobate)
-  [[10.5,0.4,22],[10,0.4,21.5],[9.5,0.4,21]].forEach(([w,h,d],i)=>{g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),marble),{position:{x:0,y:i*h+h/2,z:0}}));});
+  [[10.5,0.4,22],[10,0.4,21.5],[9.5,0.4,21]].forEach(([w,h,d],i)=>{g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),marble),0,i*h+h/2,0));});
   // 46 columns (8 front/back, 17 long sides - simplified as ~30)
   const colH=5.5, colR=0.3;
   const frontCols=8, sideCols=17;
@@ -599,9 +599,9 @@ function buildParthenon() {
   for(let j=1;j<sideCols-1;j++) STYLE.push([-4.5, (j/(sideCols-1)-0.5)*19]);
   STYLE.forEach(([cx,cz])=>{const col=new THREE.Mesh(new THREE.CylinderGeometry(colR*0.8,colR,colH,10),cols);col.position.set(cx,1.2+colH/2,cz);g.add(col);});
   // Architrave
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(9.8,0.7,22),dark),{position:{x:0,y:1.2+colH+0.35,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(9.8,0.7,22),dark),0,1.2+colH+0.35,0));
   // Frieze
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(9.6,0.8,21.8),marble),{position:{x:0,y:1.2+colH+1.1,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(9.6,0.8,21.8),marble),0,1.2+colH+1.1,0));
   // Gable (pediment) front and back
   [[0,0,10],[-Math.PI,0,-10]].forEach(([rx,ry,pz])=>{
     const pts=[new THREE.Vector2(-4.8,0),new THREE.Vector2(0,1.8),new THREE.Vector2(4.8,0)];
@@ -618,7 +618,7 @@ function buildLeaningTower() {
   const g = new THREE.Group();
   const marble=mat(0xf8f4ec,0.4,0.05), dk=mat(0xddd5c8,0.6);
   // Base
-  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(3.0,3.2,0.8,24),dk),{position:{x:0,y:0.4,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(3.0,3.2,0.8,24),dk),0,0.4,0));
   // 8 storeys of loggias
   for(let i=0;i<8;i++){
     const y=0.8+i*2.0;
@@ -755,6 +755,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 wrap.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
+function pa(o,x,y,z){o.position.set(x,y,z);return o;}
 scene.background = new THREE.Color(0x0b0c10);
 scene.fog = new THREE.Fog(0x0b0c10, 40, 90);
 
@@ -778,13 +779,13 @@ sun.shadow.camera.left = -25; sun.shadow.camera.right = 25;
 sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
 sun.shadow.mapSize.set(2048, 2048);
 scene.add(sun);
-scene.add(Object.assign(new THREE.DirectionalLight(0x4060ff, 0.5), {position: new THREE.Vector3(-10,5,-8)}));
+scene.add(pa(new THREE.DirectionalLight(0x4060ff, 0.5),-10,5,-8));
 
 // Ground
 const ground = new THREE.Mesh(new THREE.CircleGeometry(35,64), new THREE.MeshStandardMaterial({color:0x16181f,roughness:0.9,metalness:0.1}));
 ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
 scene.add(ground);
-scene.add(Object.assign(new THREE.GridHelper(35,22,0x252733,0x1a1c28), {position: new THREE.Vector3(0,0.01,0)}));
+scene.add(pa(new THREE.GridHelper(35,22,0x252733,0x1a1c28),0,0.01,0));
 
 let currentGroup = null;
 let currentLandmark = null;
