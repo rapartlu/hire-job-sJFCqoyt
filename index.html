@@ -239,7 +239,7 @@
     <span>&middot;</span>
     <a href="https://hire.autonomous-fleet.workers.dev" target="_blank" rel="noopener">hire.autonomous-fleet.workers.dev</a>
     <span>&middot;</span>
-    <span>v11 &middot; stylise</span>
+    <span>v12 &middot; stylise</span>
   </footer>
 </div>
 
@@ -580,36 +580,55 @@ function buildChichenItza() {
 
 function buildSydneyOperaHouse() {
   const g = new THREE.Group();
-  const tile=mat(0xf8f6f2,0.2,0.05), base=mat(0xe0dcd5,0.7), conc=mat(0xc8c4bc,0.8);
-  // Podium base
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(12,0.8,6),base), 0, 0.4, 0));
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(11,0.4,5.5),conc), 0, 1, 0));
+  const base=mat(0xb8b2a6,0.75), conc=mat(0xd6d2ca,0.8);
+  // White tile shell material — DoubleSide so the curved underside of each
+  // open shell reads white rather than as a black backface.
+  const tile=mat(0xf6f4ef,0.32,0.05); tile.side = THREE.DoubleSide;
 
-  // Shell geometry — iconic curved sail shapes
-  // Shell 1: large main concert hall shell (3 nested shells)
-  function buildShell(cx, cz, xScale, yScale, zScale, rotY) {
-    const shellGroup = new THREE.Group();
-    for (let s = 0; s < 3; s++) {
-      const pts = [];
-      for (let i = 0; i <= 16; i++) {
-        const t = i / 16;
-        const r = (1 - t) * 2.2;
-        const h = Math.sin(t * Math.PI) * 3.5 * (1 - t * 0.3);
-        pts.push(new THREE.Vector2(r * (1 + s * 0.12), h * yScale));
-      }
-      const geo = new THREE.LatheGeometry(pts, 8, 0, Math.PI);
-      const shell = new THREE.Mesh(geo, tile);
-      shell.scale.set(xScale * (1 - s * 0.08), 1, zScale * (1 - s * 0.08));
-      shellGroup.add(shell);
-    }
-    shellGroup.position.set(cx, 1.2, cz);
-    shellGroup.rotation.y = rotY;
-    return shellGroup;
+  // Broad stepped podium the shells rise from (the real building sits on a
+  // wide platform over the harbour).
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(14,0.7,7),base), 0, 0.35, 0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(13,0.45,6.2),conc), 0, 0.92, 0));
+
+  // v12 geometry: one pointed sail-shell = the top segment of a sphere
+  // scaled tall, so it curves up to a ridge like the precast concrete shells
+  // instead of the old rounded half-dome. phiLength PI = half the azimuth
+  // (an open shell); thetaLength 0.6*PI takes the cap from the pole past the
+  // equator so the lower edge flares out.
+  function sail(h, w, d) {
+    const geo = new THREE.SphereGeometry(1, 24, 16, Math.PI * 0.5, Math.PI, 0, Math.PI * 0.6);
+    const m = new THREE.Mesh(geo, tile);
+    m.scale.set(w, h, d);
+    m.castShadow = true;
+    return m;
   }
 
-  g.add(buildShell(-1.5, 0, 1.1, 1.0, 0.8, 0));      // main hall
-  g.add(buildShell(2.5, 0, 0.85, 0.82, 0.65, 0.1));   // opera theatre
-  g.add(buildShell(5.5, 0, 0.5, 0.55, 0.45, 0.2));    // smaller shell
+  // A cluster = a row of shells of decreasing size leaning the same way, with
+  // a smaller shell facing back. Two big clusters (Concert Hall + Opera
+  // Theatre) plus a small one give the signature stepped-sail roofline.
+  function cluster(cx, cz, yaw, scale) {
+    const c = new THREE.Group();
+    const sizes = [[3.6, 2.0, 2.3], [2.9, 1.7, 2.05], [2.2, 1.4, 1.8], [1.5, 1.05, 1.5]];
+    let z = 1.6 * scale;
+    sizes.forEach(([h, w, d]) => {
+      const s = sail(h * scale, w * scale, d * scale);
+      s.position.set(0, 0.9, z);
+      c.add(s);
+      z -= d * scale * 0.7;
+    });
+    // opposing rear shell
+    const back = sail(1.8 * scale, 1.15 * scale, 1.6 * scale);
+    back.position.set(0, 0.9, z + 0.5 * scale);
+    back.rotation.y = Math.PI;
+    c.add(back);
+    c.position.set(cx, 0, cz);
+    c.rotation.y = yaw;
+    return c;
+  }
+
+  g.add(cluster(-3.2, 0.5, 0.16, 1.0));    // Concert Hall (largest)
+  g.add(cluster(1.4, -0.4, 0.16, 0.82));   // Opera Theatre
+  g.add(cluster(5.2, 0.8, -0.5, 0.42));    // Bennelong restaurant shells
 
   return g;
 }
