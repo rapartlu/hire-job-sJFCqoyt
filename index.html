@@ -165,6 +165,32 @@
     }
     #hint.visible { display: block; }
 
+    /* Style selector */
+    #style-bar {
+      position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+      display: none; gap: 6px; padding: 6px;
+      background: rgba(13,14,20,0.72); backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: 12px;
+      max-width: calc(100% - 24px); overflow-x: auto; scrollbar-width: none;
+      z-index: 5;
+    }
+    #style-bar::-webkit-scrollbar { display: none; }
+    #style-bar.visible { display: flex; }
+    .style-chip {
+      flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
+      gap: 2px; min-width: 58px; padding: 7px 8px; cursor: pointer;
+      border: 1px solid transparent; border-radius: 9px;
+      background: rgba(255,255,255,0.03); color: var(--muted);
+      font-size: 11px; line-height: 1.2; transition: all 0.14s ease;
+      user-select: none;
+    }
+    .style-chip:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .style-chip .chip-icon { font-size: 18px; }
+    .style-chip.active {
+      background: rgba(124,160,255,0.16); border-color: var(--accent);
+      color: #fff;
+    }
+
     /* Footer */
     #footer {
       height: 34px; background: var(--footer-bg);
@@ -205,6 +231,7 @@
     </div>
     <div id="info-overlay"><div id="info-name"></div><div id="info-meta"></div></div>
     <div id="hint">Drag to rotate &middot; Scroll to zoom</div>
+    <div id="style-bar"></div>
   </main>
 
   <footer id="footer">
@@ -212,7 +239,7 @@
     <span>&middot;</span>
     <a href="https://hire.autonomous-fleet.workers.dev" target="_blank" rel="noopener">hire.autonomous-fleet.workers.dev</a>
     <span>&middot;</span>
-    <span>v7</span>
+    <span>v11 &middot; stylise</span>
   </footer>
 </div>
 
@@ -271,38 +298,78 @@ function mat(color, roughness = 0.8, metalness = 0.05) {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness });
 }
 
+// Position-and-return helper. Object3D.position is a read-only accessor in
+// Three.js r167, so `Object.assign(obj, {position: {...}})` throws
+// "Cannot assign to read only property 'position'" and halts the whole module.
+// pa() sets the components in place, which is the supported path.
+function pa(o, x, y, z) { o.position.set(x, y, z); return o; }
+
 // ─── Landmark builders ────────────────────────────────────────────────────────
 
 function buildEiffelTower() {
+  // v11 geometry: 4-point CatmullRomCurve3 per leg so the dramatic parabolic
+  // inward sweep is visible — the defining silhouette of the real tower.
+  // Also adds the first-floor arches (curved girders connecting adjacent legs),
+  // the most iconic single feature at ground level.
   const g = new THREE.Group();
-  const ironDark = mat(0x3b2f1e, 0.75, 0.35);
-  const ironMid  = mat(0x5c4a35, 0.70, 0.30);
-  const legData  = [{dx:1.6,dz:1.6},{dx:-1.6,dz:1.6},{dx:1.6,dz:-1.6},{dx:-1.6,dz:-1.6}];
+  const iron = mat(0x3d3020, 0.72, 0.38);
+  const ironMid = mat(0x5e4e36, 0.68, 0.32);
+  const s = 2.4; // half-span at ground level
+  const corners = [{dx:1,dz:1},{dx:-1,dz:1},{dx:1,dz:-1},{dx:-1,dz:-1}];
 
-  legData.forEach(({dx,dz}) => {
-    const pts = [new THREE.Vector3(dx,0,dz), new THREE.Vector3(dx*0.35,4.5,dz*0.35)];
+  // ─── 4 curved legs: wide at base, converge at first platform ─────────────────
+  corners.forEach(({dx,dz}) => {
+    const pts = [
+      new THREE.Vector3(dx*s,       0.05, dz*s),        // ground — dramatic spread
+      new THREE.Vector3(dx*s*0.70,  2.2,  dz*s*0.70),   // lower curve
+      new THREE.Vector3(dx*s*0.28,  4.9,  dz*s*0.28),   // converging fast
+      new THREE.Vector3(dx*s*0.13,  6.1,  dz*s*0.13),   // first platform
+    ];
     const curve = new THREE.CatmullRomCurve3(pts);
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,6,0.14,6,false), ironDark));
-    for (let j=0;j<3;j++){
-      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.6,4), ironMid);
-      const p0=curve.getPoint(j/3), p1=curve.getPoint(j/3+0.15);
-      b.position.lerpVectors(p0,p1,0.5); b.lookAt(p1); b.rotateX(Math.PI/2);
-      g.add(b);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,14,0.15,7,false), iron));
+    // Horizontal lattice rings at intervals along each leg
+    for (let j=1;j<5;j++){
+      const p0=curve.getPoint(j/5.2), p1=curve.getPoint(j/5.2+0.08);
+      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.5,4), ironMid);
+      b.position.copy(p0); b.lookAt(p1); b.rotateX(Math.PI/2); g.add(b);
     }
   });
-  const plat1 = new THREE.Mesh(new THREE.BoxGeometry(3.0,0.28,3.0), ironDark);
-  plat1.position.y=4.5; g.add(plat1);
-  for(let i=0;i<16;i++){const a=(i/16)*Math.PI*2;const p=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.35,0.06),ironMid);p.position.set(Math.cos(a)*1.4,4.8,Math.sin(a)*1.4);g.add(p);}
-  legData.forEach(({dx,dz})=>{
-    const pts=[new THREE.Vector3(dx*0.22,4.5,dz*0.22),new THREE.Vector3(dx*0.06,8.0,dz*0.06)];
-    const curve=new THREE.CatmullRomCurve3(pts);
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,4,0.09,5,false),ironDark));
+
+  // ─── First-floor arches: curved beams connecting adjacent leg pairs ───────────
+  // The iconic framing visible when standing beneath the tower.
+  [[1,1,1,-1],[1,1,-1,1],[-1,1,-1,-1],[-1,-1,1,-1]].forEach(([ax,az,bx,bz])=>{
+    const A = new THREE.Vector3(ax*s*0.80, 1.1, az*s*0.80);
+    const M = new THREE.Vector3((ax+bx)*s*0.20, 3.8, (az+bz)*s*0.20);
+    const B = new THREE.Vector3(bx*s*0.80, 1.1, bz*s*0.80);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([A,M,B]),12,0.11,6,false), ironMid));
   });
-  const plat2=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.22,1.5),ironDark); plat2.position.y=8; g.add(plat2);
-  const upper=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.65,4,10),ironDark); upper.position.y=10; g.add(upper);
-  const plat3=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.2,12),ironMid); plat3.position.y=12; g.add(plat3);
-  const spire=new THREE.Mesh(new THREE.ConeGeometry(0.22,3.5,8),ironDark); spire.position.y=13.75; g.add(spire);
-  const tip=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,1.2,5),ironMid); tip.position.y=15.6; g.add(tip);
+
+  // ─── First platform ────────────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.2,0.25,3.2),iron), 0, 6.1, 0));
+  for(let i=0;i<18;i++){const a=(i/18)*Math.PI*2;g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(0.065,0.35,0.065),ironMid),Math.cos(a)*1.5,6.4,Math.sin(a)*1.5));}
+
+  // ─── Secondary legs: first → second platform ──────────────────────────────────
+  corners.forEach(({dx,dz})=>{
+    const pts=[
+      new THREE.Vector3(dx*s*0.24, 6.1,  dz*s*0.24),
+      new THREE.Vector3(dx*s*0.11, 9.2,  dz*s*0.11),
+      new THREE.Vector3(dx*s*0.055,11.0, dz*s*0.055),
+    ];
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),8,0.1,6,false),iron));
+  });
+
+  // ─── Second platform ──────────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(1.8,0.22,1.8),iron),0,11.0,0));
+  for(let i=0;i<12;i++){const a=(i/12)*Math.PI*2;g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(0.055,0.3,0.055),ironMid),Math.cos(a)*0.85,11.25,Math.sin(a)*0.85));}
+
+  // ─── Upper section: tapering cylinder ─────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.55,3.8,10),iron),0,12.9,0));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.44,0.44,0.2,12),ironMid),0,14.8,0));
+
+  // ─── Spire + antenna ──────────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.2,3.2,8),iron),0,16.3,0));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,1.4,5),ironMid),0,18.1,0));
+
   return g;
 }
 
@@ -343,63 +410,93 @@ function buildColosseum() {
 }
 
 function buildBigBen() {
+  // v11 geometry: adds the 4 corner octagonal turrets that give Big Ben its
+  // recognisable Gothic Revival silhouette. Clock hands added for legibility.
   const g = new THREE.Group();
-  const lime=mat(0xc8c0a0,0.9), roof=mat(0x4a6040,0.8), clock=mat(0xf0edd8,0.6), gold=mat(0xb8922a,0.4,0.6), dk=mat(0x3a3530,0.95);
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3.2,0.6,3.2),lime),{position:{x:0,y:0.3,z:0}}));
-  const tower=new THREE.Mesh(new THREE.BoxGeometry(2.6,9,2.6),lime); tower.position.y=5.1; g.add(tower);
-  const belfry=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.2,2.8),lime); belfry.position.y=10.2; g.add(belfry);
-  const cs=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.8,2.8),clock); cs.position.y=11.7; g.add(cs);
-  [{pos:[0,11.7,1.42],ry:0},{pos:[0,11.7,-1.42],ry:Math.PI},{pos:[1.42,11.7,0],ry:Math.PI/2},{pos:[-1.42,11.7,0],ry:-Math.PI/2}].forEach(({pos,ry})=>{
-    const ring=new THREE.Mesh(new THREE.RingGeometry(0.55,0.65,32),gold); ring.position.set(...pos); ring.rotation.y=ry; ring.rotation.x=Math.PI/2; g.add(ring);
-    const face=new THREE.Mesh(new THREE.CircleGeometry(0.55,32),clock); face.position.set(...pos); face.rotation.y=ry; face.rotation.x=Math.PI/2; g.add(face);
+  const lime=mat(0xc4bc9a,0.88,0.04), roof=mat(0x4a6040,0.78,0.12);
+  const clock=mat(0xf0edd8,0.55,0.06), gold=mat(0xb8922a,0.35,0.7), dk=mat(0x2a2520,0.95);
+
+  // ─── Base platform ────────────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.8,0.7,3.8),lime), 0, 0.35, 0));
+
+  // ─── Main tower shaft ────────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.8,11.5,2.8),lime), 0, 6.85, 0));
+
+  // ─── 4 corner octagonal turrets — the Gothic Revival signature ───────────────
+  [[1.4,1.4],[1.4,-1.4],[-1.4,1.4],[-1.4,-1.4]].forEach(([tx,tz])=>{
+    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,12.5,8),lime), tx, 7.25, tz));
+    // Lantern ring at top
+    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.44,0.44,0.22,8),lime), tx, 13.5, tz));
+    // Turret spire
+    g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.4,2.8,8),roof), tx, 15.15, tz));
   });
-  const corb=new THREE.Mesh(new THREE.BoxGeometry(3,0.3,3),gold); corb.position.y=12.75; g.add(corb);
-  const sb=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.4,0.8,8),roof); sb.position.y=13.3; g.add(sb);
-  const sp=new THREE.Mesh(new THREE.CylinderGeometry(0.05,1,5.5,8),roof); sp.position.y=16.45; g.add(sp);
+
+  // ─── Belfry storey ────────────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.0,1.5,3.0),lime), 0, 13.35, 0));
+
+  // ─── Clock storey (4 large illuminated faces) ─────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.0,2.4,3.0),clock), 0, 15.3, 0));
+  [{pos:[0,15.3,1.52],ry:0},{pos:[0,15.3,-1.52],ry:Math.PI},
+   {pos:[1.52,15.3,0],ry:Math.PI/2},{pos:[-1.52,15.3,0],ry:-Math.PI/2}].forEach(({pos,ry})=>{
+    const ring=new THREE.Mesh(new THREE.RingGeometry(0.68,0.80,32),gold); ring.position.set(...pos); ring.rotation.y=ry; ring.rotation.x=Math.PI/2; g.add(ring);
+    const face=new THREE.Mesh(new THREE.CircleGeometry(0.66,32),clock); face.position.set(...pos); face.rotation.y=ry; face.rotation.x=Math.PI/2; g.add(face);
+    // Clock hands
+    const hour = new THREE.Mesh(new THREE.BoxGeometry(0.065,0.42,0.025),dk); hour.position.set(...pos); hour.rotation.y=ry; hour.rotation.x=Math.PI/2; hour.rotation.z=0.6; g.add(hour);
+    const min  = new THREE.Mesh(new THREE.BoxGeometry(0.045,0.60,0.025),dk); min.position.set(...pos);  min.rotation.y=ry;  min.rotation.x=Math.PI/2; min.rotation.z=-0.9; g.add(min);
+  });
+
+  // ─── Cornice band ─────────────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.2,0.32,3.2),gold), 0, 16.6, 0));
+
+  // ─── Gothic octagonal spire ───────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.3,0.8,8),roof), 0, 17.1, 0));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.95,5.5,8),roof), 0, 20.25, 0));
+  g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.13,6,5),gold), 0, 23.1, 0));
+
   return g;
 }
 
 function buildTajMahal() {
   const g = new THREE.Group();
   const mb=mat(0xf5f0e8,0.3,0.05), ms=mat(0xddd5c0,0.4,0.05), inl=mat(0xb8d4c8,0.5,0.1), ar=mat(0x1a1814,0.95);
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(11,0.7,11),ms),{position:{x:0,y:0.35,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(10,0.5,10),mb),{position:{x:0,y:0.95,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(11,0.7,11),ms), 0, 0.35, 0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(10,0.5,10),mb), 0, 0.95, 0));
   [[-4.2,0,-4.2],[4.2,0,-4.2],[-4.2,0,4.2],[4.2,0,4.2]].forEach(([mx,,mz])=>{
-    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.45,0.4,12),ms),{position:{x:mx,y:1.4,z:mz}}));
-    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.38,5.5,12),mb),{position:{x:mx,y:4.45,z:mz}}));
-    [2.5,4,5.5].forEach(bh=>{g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.18,12),ms),{position:{x:mx,y:1.6+bh,z:mz}}));});
-    g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.35,10,7,0,Math.PI*2,0,Math.PI/2),mb),{position:{x:mx,y:7.5,z:mz}}));
-    g.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.08,1,6),ms),{position:{x:mx,y:8.3,z:mz}}));
+    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.45,0.4,12),ms), mx, 1.4, mz));
+    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.30,0.38,5.5,12),mb), mx, 4.45, mz));
+    [2.5,4,5.5].forEach(bh=>{g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.18,12),ms), mx, 1.6+bh, mz));});
+    g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.35,10,7,0,Math.PI*2,0,Math.PI/2),mb), mx, 7.5, mz));
+    g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.08,1,6),ms), mx, 8.3, mz));
   });
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(5.5,3.5,5.5),mb),{position:{x:0,y:2.95,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(5.5,3.5,5.5),mb), 0, 2.95, 0));
   [[0,2.8,2.76,0],[0,2.8,-2.76,Math.PI],[2.76,2.8,0,Math.PI/2],[-2.76,2.8,0,-Math.PI/2]].forEach(([px,py,pz,ry])=>{
     const am=new THREE.Mesh(new THREE.BoxGeometry(1.6,2.5,0.1),ar); am.position.set(px,py,pz); am.rotation.y=ry; g.add(am);
   });
   [[-2,4.7,-2],[2,4.7,-2],[-2,4.7,2],[2,4.7,2]].forEach(([tx,ty,tz])=>{
-    g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.6,1,8),mb),{position:{x:tx,y:ty,z:tz}}));
-    g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.55,8,6,0,Math.PI*2,0,Math.PI/2),mb),{position:{x:tx,y:ty+0.55,z:tz}}));
-    g.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.1,0.8,6),ms),{position:{x:tx,y:ty+1.1,z:tz}}));
+    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.6,1,8),mb), tx, ty, tz));
+    g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.55,8,6,0,Math.PI*2,0,Math.PI/2),mb), tx, ty+0.55, tz));
+    g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.1,0.8,6),ms), tx, ty+1.1, tz));
   });
   const drum=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.6,0.9,8),mb); drum.position.y=5.15; g.add(drum);
   const pts=[]; for(let i=0;i<=20;i++){const t=i/20;pts.push(new THREE.Vector2(Math.sin(t*Math.PI)*1.75*(1+0.35*Math.sin(t*Math.PI*1.2)),t*3.5));}
   const dome=new THREE.Mesh(new THREE.LatheGeometry(pts,24),mb); dome.position.y=5.6; g.add(dome);
-  g.add(Object.assign(new THREE.Mesh(new THREE.ConeGeometry(0.1,1.2,6),ms),{position:{x:0,y:9.5,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.12,8,6),ms),{position:{x:0,y:10.1,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(5.52,0.12,5.52),inl),{position:{x:0,y:4.7,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.1,1.2,6),ms), 0, 9.5, 0));
+  g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.12,8,6),ms), 0, 10.1, 0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(5.52,0.12,5.52),inl), 0, 4.7, 0));
   return g;
 }
 
 function buildStatueOfLiberty() {
   const g = new THREE.Group();
   const gran=mat(0x6a6560,0.9), conc=mat(0x9a9285,0.85), cop=mat(0x4a8a72,0.8,0.15), cdk=mat(0x3a7060,0.85,0.15);
-  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(3.5,3.8,0.4,12),gran),{position:{x:0,y:0.2,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(3.5,3.8,0.4,12),gran), 0, 0.2, 0));
   for(let i=0;i<10;i++){const a=(i/10)*Math.PI*2,r=i%2===0?3.5:2.8;const b=new THREE.Mesh(new THREE.BoxGeometry(1,0.6,0.5),gran);b.position.set(Math.cos(a)*r,0.5,Math.sin(a)*r);b.rotation.y=a+Math.PI/2;g.add(b);}
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2.8,2,2.8),gran),{position:{x:0,y:1.4,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2.4,2,2.4),conc),{position:{x:0,y:3.4,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(2,0.5,2),conc),{position:{x:0,y:4.85,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.8,2,2.8),gran), 0, 1.4, 0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.4,2,2.4),conc), 0, 3.4, 0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2,0.5,2),conc), 0, 4.85, 0));
   const robes=new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.85,3.5,10),cop); robes.position.y=6.9; g.add(robes);
-  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.52,0.7,1.8,10),cop),{position:{x:0,y:9.5,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.42,12,10),cop),{position:{x:0,y:10.9,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.52,0.7,1.8,10),cop), 0, 9.5, 0));
+  g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.42,12,10),cop), 0, 10.9, 0));
   for(let i=0;i<7;i++){const a=(i/7)*Math.PI*2;const sp=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.55,5),cop);sp.position.set(Math.cos(a)*0.38,11.05,Math.sin(a)*0.38);sp.rotation.z=Math.atan2(Math.cos(a),0.5)*(a>Math.PI?-1:1);sp.rotation.x=Math.atan2(Math.sin(a),0.5)*-1;g.add(sp);}
   const raUp=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,1,6),cop); raUp.position.set(0.65,9.8,0); raUp.rotation.z=-1.1; g.add(raUp);
   const fa=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,0.8,6),cop); fa.position.set(1.35,10.5,0); fa.rotation.z=-0.3; g.add(fa);
@@ -454,7 +551,7 @@ function buildStonehenge() {
     cap.position.set(Math.cos(a+0.125)*Ri,4.25,Math.sin(a+0.125)*Ri); cap.rotation.y=-a-0.125; g.add(cap);
   }
   // Altar stone
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1,0.25,0.4),st),{position:{x:0,y:0.125,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(1,0.25,0.4),st), 0, 0.125, 0));
   return g;
 }
 
@@ -485,8 +582,8 @@ function buildSydneyOperaHouse() {
   const g = new THREE.Group();
   const tile=mat(0xf8f6f2,0.2,0.05), base=mat(0xe0dcd5,0.7), conc=mat(0xc8c4bc,0.8);
   // Podium base
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(12,0.8,6),base),{position:{x:0,y:0.4,z:0}}));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(11,0.4,5.5),conc),{position:{x:0,y:1,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(12,0.8,6),base), 0, 0.4, 0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(11,0.4,5.5),conc), 0, 1, 0));
 
   // Shell geometry — iconic curved sail shapes
   // Shell 1: large main concert hall shell (3 nested shells)
@@ -588,7 +685,7 @@ function buildParthenon() {
   const g = new THREE.Group();
   const marble=mat(0xf0e8d8,0.5,0.05), cols=mat(0xf8f0e0,0.4,0.05), dark=mat(0xd4c8a8,0.7);
   // Stepped base (stylobate)
-  [[10.5,0.4,22],[10,0.4,21.5],[9.5,0.4,21]].forEach(([w,h,d],i)=>{g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),marble),{position:{x:0,y:i*h+h/2,z:0}}));});
+  [[10.5,0.4,22],[10,0.4,21.5],[9.5,0.4,21]].forEach(([w,h,d],i)=>{g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),marble), 0, i*h+h/2, 0));});
   // 46 columns (8 front/back, 17 long sides - simplified as ~30)
   const colH=5.5, colR=0.3;
   const frontCols=8, sideCols=17;
@@ -599,9 +696,9 @@ function buildParthenon() {
   for(let j=1;j<sideCols-1;j++) STYLE.push([-4.5, (j/(sideCols-1)-0.5)*19]);
   STYLE.forEach(([cx,cz])=>{const col=new THREE.Mesh(new THREE.CylinderGeometry(colR*0.8,colR,colH,10),cols);col.position.set(cx,1.2+colH/2,cz);g.add(col);});
   // Architrave
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(9.8,0.7,22),dark),{position:{x:0,y:1.2+colH+0.35,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(9.8,0.7,22),dark), 0, 1.2+colH+0.35, 0));
   // Frieze
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(9.6,0.8,21.8),marble),{position:{x:0,y:1.2+colH+1.1,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(9.6,0.8,21.8),marble), 0, 1.2+colH+1.1, 0));
   // Gable (pediment) front and back
   [[0,0,10],[-Math.PI,0,-10]].forEach(([rx,ry,pz])=>{
     const pts=[new THREE.Vector2(-4.8,0),new THREE.Vector2(0,1.8),new THREE.Vector2(4.8,0)];
@@ -618,7 +715,7 @@ function buildLeaningTower() {
   const g = new THREE.Group();
   const marble=mat(0xf8f4ec,0.4,0.05), dk=mat(0xddd5c8,0.6);
   // Base
-  g.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(3.0,3.2,0.8,24),dk),{position:{x:0,y:0.4,z:0}}));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(3.0,3.2,0.8,24),dk), 0, 0.4, 0));
   // 8 storeys of loggias
   for(let i=0;i<8;i++){
     const y=0.8+i*2.0;
@@ -643,7 +740,7 @@ const LANDMARKS = [
     name: 'Eiffel Tower',
     aliases: ['eiffel', 'eiffel tower', 'tour eiffel', 'paris tower'],
     city: 'Paris, France', year: 'Built 1887-1889', icon: '🗼',
-    build: buildEiffelTower, camera: {x:0,y:8,z:20},
+    build: buildEiffelTower, camera: {x:0,y:9,z:24},
   },
   {
     id: 'colosseum',
@@ -657,7 +754,7 @@ const LANDMARKS = [
     name: 'Elizabeth Tower (Big Ben)',
     aliases: ['big ben', 'elizabeth tower', 'clock tower', 'westminster', 'london tower'],
     city: 'London, UK', year: 'Built 1843-1859', icon: '🕰️',
-    build: buildBigBen, camera: {x:4,y:8,z:16},
+    build: buildBigBen, camera: {x:4,y:10,z:20},
   },
   {
     id: 'tajmahal',
@@ -778,13 +875,120 @@ sun.shadow.camera.left = -25; sun.shadow.camera.right = 25;
 sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
 sun.shadow.mapSize.set(2048, 2048);
 scene.add(sun);
-scene.add(Object.assign(new THREE.DirectionalLight(0x4060ff, 0.5), {position: new THREE.Vector3(-10,5,-8)}));
+scene.add(pa(new THREE.DirectionalLight(0x4060ff, 0.5), -10, 5, -8));
 
 // Ground
 const ground = new THREE.Mesh(new THREE.CircleGeometry(35,64), new THREE.MeshStandardMaterial({color:0x16181f,roughness:0.9,metalness:0.1}));
 ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
 scene.add(ground);
-scene.add(Object.assign(new THREE.GridHelper(35,22,0x252733,0x1a1c28), {position: new THREE.Vector3(0,0.01,0)}));
+scene.add(pa(new THREE.GridHelper(35,22,0x252733,0x1a1c28), 0, 0.01, 0));
+
+// ─── Stylisation ──────────────────────────────────────────────────────────────
+// The customer's product: pick a landmark, then render the same geometry in a
+// chosen visual style. Each style re-materialises the current model; the chosen
+// style persists across landmarks and is baked into the downloaded .glb.
+
+// Procedural environment map (core THREE, no addon) so chrome/gold have something
+// to reflect. A vertical gradient + two bright blobs = believable studio reflection.
+// Wrapped defensively: a failure here must never halt module boot (the whole
+// search/render path runs after this). On failure chrome/gold degrade gracefully.
+const ENV_MAP = (() => {
+  try {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+    const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0.00, '#aab8e0'); g.addColorStop(0.45, '#e6edff');
+    g.addColorStop(0.50, '#ffffff'); g.addColorStop(0.56, '#3a3f4d');
+    g.addColorStop(1.00, '#0b0c10');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 256);
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.beginPath(); ctx.arc(140, 70, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,214,150,0.7)';
+    ctx.beginPath(); ctx.arc(380, 92, 26, 0, Math.PI * 2); ctx.fill();
+    const tex = new THREE.CanvasTexture(c);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const env = pmrem.fromEquirectangular(tex).texture;
+    pmrem.dispose(); tex.dispose();
+    return env;
+  } catch (e) { console.warn('env map unavailable:', e && e.message); return null; }
+})();
+const HAS_ENV = !!ENV_MAP;
+
+// 4-step greyscale ramp for cel shading. Defensive: a null gradient still gives
+// a valid (smoother) MeshToonMaterial.
+const TOON_GRADIENT = (() => {
+  try {
+    const steps = [55, 120, 190, 245];
+    const data = new Uint8Array(steps.length * 4);
+    steps.forEach((v, i) => { data[i*4] = v; data[i*4+1] = v; data[i*4+2] = v; data[i*4+3] = 255; });
+    const tex = new THREE.DataTexture(data, steps.length, 1, THREE.RGBAFormat);
+    tex.minFilter = THREE.NearestFilter; tex.magFilter = THREE.NearestFilter; tex.needsUpdate = true;
+    return tex;
+  } catch (e) { console.warn('toon gradient unavailable:', e && e.message); return null; }
+})();
+
+function neonize(hex) {
+  const c = new THREE.Color(hex); const hsl = {}; c.getHSL(hsl);
+  return new THREE.Color().setHSL(hsl.h, 1.0, 0.62);
+}
+
+const STYLES = [
+  { id:'realistic', label:'Realistic', icon:'🌅', bg:0x0b0c10, fog:[40,90], env:false,
+    make:(base)=> new THREE.MeshStandardMaterial({ color:base, roughness:0.8, metalness:0.05 }) },
+  { id:'lowpoly', label:'Low-poly', icon:'🔻', bg:0x12131a, fog:[40,90], env:false,
+    make:(base)=> new THREE.MeshStandardMaterial({ color:base, roughness:0.95, metalness:0.0, flatShading:true }) },
+  { id:'clay', label:'Clay', icon:'🟫', bg:0x1a1612, fog:[40,95], env:false,
+    make:()=> new THREE.MeshStandardMaterial({ color:0xc97b5a, roughness:1.0, metalness:0.0 }) },
+  { id:'chrome', label:'Chrome', icon:'🪞', bg:0x0d0f15, fog:null, env:true,
+    make:()=> new THREE.MeshStandardMaterial({ color:0xffffff, roughness: HAS_ENV ? 0.08 : 0.22, metalness: HAS_ENV ? 1.0 : 0.85, envMapIntensity:1.4 }) },
+  { id:'gold', label:'Gold', icon:'🥇', bg:0x14110a, fog:null, env:true,
+    make:()=> new THREE.MeshStandardMaterial({ color:0xffd24a, roughness: HAS_ENV ? 0.28 : 0.34, metalness: HAS_ENV ? 1.0 : 0.85, envMapIntensity:1.3 }) },
+  { id:'toon', label:'Toon', icon:'🎨', bg:0x101826, fog:[45,95], env:false,
+    make:(base)=> new THREE.MeshToonMaterial({ color:base, gradientMap:TOON_GRADIENT }) },
+  { id:'neon', label:'Neon', icon:'💡', bg:0x05060a, fog:null, env:false,
+    make:(base)=> new THREE.MeshBasicMaterial({ color:neonize(base), wireframe:true }) },
+  { id:'xray', label:'X-ray', icon:'👻', bg:0x04070d, fog:null, env:false,
+    make:()=> new THREE.MeshStandardMaterial({ color:0x66ccff, emissive:0x16365f, roughness:0.4, metalness:0.0, transparent:true, opacity:0.34, depthWrite:false, side:THREE.DoubleSide }) },
+  { id:'blueprint', label:'Blueprint', icon:'📐', bg:0x0a1a3a, fog:null, env:false,
+    make:()=> new THREE.MeshBasicMaterial({ color:0x8fd3ff, wireframe:true }) },
+];
+const STYLE_BY_ID = Object.fromEntries(STYLES.map(s => [s.id, s]));
+let currentStyle = 'realistic';
+
+function applyStyle(group, styleId) {
+  const st = STYLE_BY_ID[styleId] || STYLES[0];
+  scene.environment = (st.env && ENV_MAP) ? ENV_MAP : null;
+  scene.background = new THREE.Color(st.bg);
+  scene.fog = st.fog ? new THREE.Fog(st.bg, st.fog[0], st.fog[1]) : null;
+  group.traverse(o => {
+    if (!o.isMesh) return;
+    const base = (o.userData.baseColor != null) ? o.userData.baseColor : 0xcccccc;
+    const old = o.material;
+    o.material = st.make(base);
+    if (old && old.dispose) old.dispose();
+  });
+}
+
+// Build the style chip row once. Clicking a chip re-materialises the current
+// model in that style (no rebuild) and remembers the choice for the next one.
+(function buildStyleBar() {
+  const bar = document.getElementById('style-bar');
+  STYLES.forEach(st => {
+    const chip = document.createElement('div');
+    chip.className = 'style-chip' + (st.id === currentStyle ? ' active' : '');
+    chip.dataset.style = st.id;
+    chip.innerHTML = `<span class="chip-icon">${st.icon}</span><span>${st.label}</span>`;
+    chip.addEventListener('click', () => {
+      currentStyle = st.id;
+      bar.querySelectorAll('.style-chip').forEach(c =>
+        c.classList.toggle('active', c.dataset.style === st.id));
+      if (currentGroup) applyStyle(currentGroup, currentStyle);
+    });
+    bar.appendChild(chip);
+  });
+})();
 
 let currentGroup = null;
 let currentLandmark = null;
@@ -793,7 +997,14 @@ function selectLandmark(lm) {
   if (currentGroup) scene.remove(currentGroup);
   currentLandmark = lm;
   currentGroup = lm.build();
-  currentGroup.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  currentGroup.traverse(o => {
+    if (o.isMesh) {
+      o.castShadow = true; o.receiveShadow = true;
+      // Remember the colour the builder chose so styles can keep or override it.
+      if (o.material && o.material.color) o.userData.baseColor = o.material.color.getHex();
+    }
+  });
+  applyStyle(currentGroup, currentStyle);
   scene.add(currentGroup);
 
   document.getElementById('info-name').textContent = lm.name;
@@ -802,6 +1013,7 @@ function selectLandmark(lm) {
   document.getElementById('hint').classList.add('visible');
   document.getElementById('empty-state').style.display = 'none';
   document.getElementById('dl-btn').disabled = false;
+  document.getElementById('style-bar').classList.add('visible');
 
   // Camera move
   const target = new THREE.Vector3(lm.camera.x, lm.camera.y, lm.camera.z);
