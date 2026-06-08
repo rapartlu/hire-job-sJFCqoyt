@@ -239,7 +239,7 @@
     <span>&middot;</span>
     <a href="https://hire.autonomous-fleet.workers.dev" target="_blank" rel="noopener">hire.autonomous-fleet.workers.dev</a>
     <span>&middot;</span>
-    <span>v11 &middot; stylise</span>
+    <span>v12 &middot; stylise</span>
   </footer>
 </div>
 
@@ -307,62 +307,96 @@ function pa(o, x, y, z) { o.position.set(x, y, z); return o; }
 // ─── Landmark builders ────────────────────────────────────────────────────────
 
 function buildEiffelTower() {
-  // v11 geometry: 4-point CatmullRomCurve3 per leg so the dramatic parabolic
-  // inward sweep is visible — the defining silhouette of the real tower.
-  // Also adds the first-floor arches (curved girders connecting adjacent legs),
-  // the most iconic single feature at ground level.
+  // v12 geometry: adds X-brace lattice on all 4 faces between curved legs —
+  // the defining visual feature of the tower. The diagonal crisscross bracing
+  // makes the structure instantly identifiable and creates the open lattice
+  // silhouette visible in any photograph of the real tower.
   const g = new THREE.Group();
   const iron = mat(0x3d3020, 0.72, 0.38);
   const ironMid = mat(0x5e4e36, 0.68, 0.32);
   const s = 2.4; // half-span at ground level
   const corners = [{dx:1,dz:1},{dx:-1,dz:1},{dx:1,dz:-1},{dx:-1,dz:-1}];
 
-  // ─── 4 curved legs: wide at base, converge at first platform ─────────────────
-  corners.forEach(({dx,dz}) => {
+  // Add a straight brace rod between two 3D points (cylinder aligned to AB)
+  function brace(A, B, r, m) {
+    const AB = new THREE.Vector3().subVectors(B, A);
+    const len = AB.length();
+    if (len < 0.04) return;
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 4), m);
+    cyl.position.addVectors(A, new THREE.Vector3().copy(AB).multiplyScalar(0.5));
+    cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), AB.normalize());
+    g.add(cyl);
+  }
+
+  // Build curved legs and store for brace attachment
+  // Corner order matches facePairs below: 0=(+z,+x) 1=(-x,+z) 2=(+x,-z) 3=(-x,-z)
+  const legCurves = corners.map(({dx,dz}) => {
     const pts = [
-      new THREE.Vector3(dx*s,       0.05, dz*s),        // ground — dramatic spread
-      new THREE.Vector3(dx*s*0.70,  2.2,  dz*s*0.70),   // lower curve
-      new THREE.Vector3(dx*s*0.28,  4.9,  dz*s*0.28),   // converging fast
-      new THREE.Vector3(dx*s*0.13,  6.1,  dz*s*0.13),   // first platform
+      new THREE.Vector3(dx*s,       0.05, dz*s),
+      new THREE.Vector3(dx*s*0.70,  2.2,  dz*s*0.70),
+      new THREE.Vector3(dx*s*0.28,  4.9,  dz*s*0.28),
+      new THREE.Vector3(dx*s*0.13,  6.1,  dz*s*0.13),
     ];
-    const curve = new THREE.CatmullRomCurve3(pts);
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,14,0.15,7,false), iron));
-    // Horizontal lattice rings at intervals along each leg
-    for (let j=1;j<5;j++){
-      const p0=curve.getPoint(j/5.2), p1=curve.getPoint(j/5.2+0.08);
-      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.5,4), ironMid);
-      b.position.copy(p0); b.lookAt(p1); b.rotateX(Math.PI/2); g.add(b);
+    return new THREE.CatmullRomCurve3(pts);
+  });
+  legCurves.forEach(c => g.add(new THREE.Mesh(new THREE.TubeGeometry(c,14,0.15,7,false), iron)));
+
+  // ─── X-BRACE LATTICE on all 4 faces ──────────────────────────────────────────
+  // Each face connects two adjacent corners. 5 panels of X (10 diagonals) per face.
+  // Adjacent pair indices: right(0,2), left(1,3), front(0,1), back(2,3)
+  const facePairs = [[0,2],[1,3],[0,1],[2,3]];
+  const PANELS = 5;
+  facePairs.forEach(([i,j]) => {
+    for (let p = 0; p < PANELS; p++) {
+      const t0 = p/PANELS, t1 = (p+1)/PANELS;
+      brace(legCurves[i].getPoint(t0), legCurves[j].getPoint(t1), 0.056, ironMid);
+      brace(legCurves[j].getPoint(t0), legCurves[i].getPoint(t1), 0.056, ironMid);
+    }
+    // Horizontal tie bars at each panel join (5 of them)
+    for (let p = 1; p < PANELS; p++) {
+      brace(legCurves[i].getPoint(p/PANELS), legCurves[j].getPoint(p/PANELS), 0.038, iron);
     }
   });
 
-  // ─── First-floor arches: curved beams connecting adjacent leg pairs ───────────
-  // The iconic framing visible when standing beneath the tower.
+  // ─── First-floor arches: iconic curved frames at ground level ─────────────────
   [[1,1,1,-1],[1,1,-1,1],[-1,1,-1,-1],[-1,-1,1,-1]].forEach(([ax,az,bx,bz])=>{
     const A = new THREE.Vector3(ax*s*0.80, 1.1, az*s*0.80);
     const M = new THREE.Vector3((ax+bx)*s*0.20, 3.8, (az+bz)*s*0.20);
     const B = new THREE.Vector3(bx*s*0.80, 1.1, bz*s*0.80);
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([A,M,B]),12,0.11,6,false), ironMid));
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([A,M,B]),12,0.10,6,false), ironMid));
   });
 
   // ─── First platform ────────────────────────────────────────────────────────────
   g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.2,0.25,3.2),iron), 0, 6.1, 0));
   for(let i=0;i<18;i++){const a=(i/18)*Math.PI*2;g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(0.065,0.35,0.065),ironMid),Math.cos(a)*1.5,6.4,Math.sin(a)*1.5));}
 
-  // ─── Secondary legs: first → second platform ──────────────────────────────────
-  corners.forEach(({dx,dz})=>{
+  // ─── Upper legs: first → second platform, with X-bracing ─────────────────────
+  const upperLegs = corners.map(({dx,dz}) => {
     const pts=[
       new THREE.Vector3(dx*s*0.24, 6.1,  dz*s*0.24),
       new THREE.Vector3(dx*s*0.11, 9.2,  dz*s*0.11),
       new THREE.Vector3(dx*s*0.055,11.0, dz*s*0.055),
     ];
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),8,0.1,6,false),iron));
+    const c = new THREE.CatmullRomCurve3(pts);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(c,8,0.10,6,false),iron));
+    return c;
+  });
+  facePairs.forEach(([i,j]) => {
+    for (let p = 0; p < 3; p++) {
+      const t0 = p/3, t1 = (p+1)/3;
+      brace(upperLegs[i].getPoint(t0), upperLegs[j].getPoint(t1), 0.048, ironMid);
+      brace(upperLegs[j].getPoint(t0), upperLegs[i].getPoint(t1), 0.048, ironMid);
+    }
+    for (let p = 1; p < 3; p++) {
+      brace(upperLegs[i].getPoint(p/3), upperLegs[j].getPoint(p/3), 0.034, iron);
+    }
   });
 
   // ─── Second platform ──────────────────────────────────────────────────────────
   g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(1.8,0.22,1.8),iron),0,11.0,0));
   for(let i=0;i<12;i++){const a=(i/12)*Math.PI*2;g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(0.055,0.3,0.055),ironMid),Math.cos(a)*0.85,11.25,Math.sin(a)*0.85));}
 
-  // ─── Upper section: tapering cylinder ─────────────────────────────────────────
+  // ─── Upper section ────────────────────────────────────────────────────────────
   g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.55,3.8,10),iron),0,12.9,0));
   g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.44,0.44,0.2,12),ironMid),0,14.8,0));
 
@@ -410,48 +444,78 @@ function buildColosseum() {
 }
 
 function buildBigBen() {
-  // v11 geometry: adds the 4 corner octagonal turrets that give Big Ben its
-  // recognisable Gothic Revival silhouette. Clock hands added for legibility.
+  // v12 geometry: two changes that fix recognisability —
+  // (1) Clock faces enlarged from r=0.66 to r=1.38 (2.76 dia on 3.6-wide storey = 77%).
+  //     The clock face is now the DOMINANT feature of the clock storey, not a small accent.
+  // (2) 4 corner pinnacles placed at the crown (above the clock storey), distinct and tall.
+  //     The shaft is also narrowed from 2.8 to 2.0 so the clock storey's wider width reads.
   const g = new THREE.Group();
   const lime=mat(0xc4bc9a,0.88,0.04), roof=mat(0x4a6040,0.78,0.12);
   const clock=mat(0xf0edd8,0.55,0.06), gold=mat(0xb8922a,0.35,0.7), dk=mat(0x2a2520,0.95);
 
-  // ─── Base platform ────────────────────────────────────────────────────────────
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.8,0.7,3.8),lime), 0, 0.35, 0));
+  // ─── Foundation base ──────────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(4.2,0.7,4.2),lime), 0, 0.35, 0));
 
-  // ─── Main tower shaft ────────────────────────────────────────────────────────
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.8,11.5,2.8),lime), 0, 6.85, 0));
+  // ─── Main slim shaft (2.0 wide — narrower than v11) ──────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.0,13.5,2.0),lime), 0, 7.45, 0));
 
-  // ─── 4 corner octagonal turrets — the Gothic Revival signature ───────────────
-  [[1.4,1.4],[1.4,-1.4],[-1.4,1.4],[-1.4,-1.4]].forEach(([tx,tz])=>{
-    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.42,12.5,8),lime), tx, 7.25, tz));
-    // Lantern ring at top
-    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.44,0.44,0.22,8),lime), tx, 13.5, tz));
-    // Turret spire
-    g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.4,2.8,8),roof), tx, 15.15, tz));
+  // ─── Slim buttress ribs at the 4 corners of the shaft ────────────────────────
+  // Thin vertical pillars that project beyond the shaft face, giving Gothic verticality
+  [[1.06,1.06],[1.06,-1.06],[-1.06,1.06],[-1.06,-1.06]].forEach(([tx,tz])=>{
+    g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(0.3,13.5,0.3),lime), tx, 7.45, tz));
   });
 
   // ─── Belfry storey ────────────────────────────────────────────────────────────
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.0,1.5,3.0),lime), 0, 13.35, 0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.8,1.6,2.8),lime), 0, 14.9, 0));
 
-  // ─── Clock storey (4 large illuminated faces) ─────────────────────────────────
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.0,2.4,3.0),clock), 0, 15.3, 0));
-  [{pos:[0,15.3,1.52],ry:0},{pos:[0,15.3,-1.52],ry:Math.PI},
-   {pos:[1.52,15.3,0],ry:Math.PI/2},{pos:[-1.52,15.3,0],ry:-Math.PI/2}].forEach(({pos,ry})=>{
-    const ring=new THREE.Mesh(new THREE.RingGeometry(0.68,0.80,32),gold); ring.position.set(...pos); ring.rotation.y=ry; ring.rotation.x=Math.PI/2; g.add(ring);
-    const face=new THREE.Mesh(new THREE.CircleGeometry(0.66,32),clock); face.position.set(...pos); face.rotation.y=ry; face.rotation.x=Math.PI/2; g.add(face);
-    // Clock hands
-    const hour = new THREE.Mesh(new THREE.BoxGeometry(0.065,0.42,0.025),dk); hour.position.set(...pos); hour.rotation.y=ry; hour.rotation.x=Math.PI/2; hour.rotation.z=0.6; g.add(hour);
-    const min  = new THREE.Mesh(new THREE.BoxGeometry(0.045,0.60,0.025),dk); min.position.set(...pos);  min.rotation.y=ry;  min.rotation.x=Math.PI/2; min.rotation.z=-0.9; g.add(min);
+  // ─── Clock storey — the dominant feature ─────────────────────────────────────
+  // 3.6 wide × 4.2 tall. Wider than both the shaft AND the belfry so the clock
+  // section reads as distinct and prominent.
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.6,4.2,3.6),clock), 0, 17.8, 0));
+
+  // ─── 4 large clock faces ─────────────────────────────────────────────────────
+  // v12 radius = 1.38 → 2.76 dia on 3.6-wide storey = 77%. Clearly dominant.
+  const CF = 3.6/2 + 0.02; // face plane distance from centre
+  [{pos:[0,17.8,CF],ry:0},{pos:[0,17.8,-CF],ry:Math.PI},
+   {pos:[CF,17.8,0],ry:Math.PI/2},{pos:[-CF,17.8,0],ry:-Math.PI/2}].forEach(({pos,ry})=>{
+    // Gold outer ring
+    const ring=new THREE.Mesh(new THREE.RingGeometry(1.24,1.42,32),gold);
+    ring.position.set(...pos); ring.rotation.y=ry; ring.rotation.x=Math.PI/2; g.add(ring);
+    // Cream clock face
+    const face=new THREE.Mesh(new THREE.CircleGeometry(1.23,32),clock);
+    face.position.set(...pos); face.rotation.y=ry; face.rotation.x=Math.PI/2; g.add(face);
+    // XII marker at top (gold bar, easy to read)
+    const noonY = pos[1]+1.02;
+    const noon=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.30,0.05),gold);
+    noon.position.set(pos[0],noonY,pos[2]); noon.rotation.y=ry; noon.rotation.x=Math.PI/2; g.add(noon);
+    // Hour hand
+    const hour=new THREE.Mesh(new THREE.BoxGeometry(0.10,0.82,0.05),dk);
+    hour.position.set(...pos); hour.rotation.y=ry; hour.rotation.x=Math.PI/2; hour.rotation.z=0.6; g.add(hour);
+    // Minute hand (longer, thinner)
+    const min=new THREE.Mesh(new THREE.BoxGeometry(0.07,1.18,0.05),dk);
+    min.position.set(...pos); min.rotation.y=ry; min.rotation.x=Math.PI/2; min.rotation.z=-0.9; g.add(min);
   });
 
-  // ─── Cornice band ─────────────────────────────────────────────────────────────
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.2,0.32,3.2),gold), 0, 16.6, 0));
+  // ─── Gold cornice above clock storey ─────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(3.8,0.42,3.8),gold), 0, 20.11, 0));
 
-  // ─── Gothic octagonal spire ───────────────────────────────────────────────────
-  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.3,0.8,8),roof), 0, 17.1, 0));
-  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.95,5.5,8),roof), 0, 20.25, 0));
-  g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.13,6,5),gold), 0, 23.1, 0));
+  // ─── 4 corner pinnacles at the crown — the Gothic Revival signature ───────────
+  // Placed at the 4 corners of the spire zone. Height ~4 units above the cornice
+  // so they're clearly visible as distinct spires flanking the central spire.
+  [[1.88,1.88],[1.88,-1.88],[-1.88,1.88],[-1.88,-1.88]].forEach(([tx,tz])=>{
+    g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.30,1.4,8),lime), tx, 21.0, tz));
+    g.add(pa(new THREE.Mesh(new THREE.ConeGeometry(0.24,3.2,8),roof), tx, 22.3, tz));
+    g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.08,6,4),gold), tx, 23.95, tz));
+  });
+
+  // ─── Octagonal spire base ─────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(1.55,1.40,1.0,8),roof), 0, 20.82, 0));
+
+  // ─── Main tall Gothic spire ───────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.05,1.05,6.2,8),roof), 0, 24.42, 0));
+
+  // ─── Gold finial ──────────────────────────────────────────────────────────────
+  g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.14,6,5),gold), 0, 27.62, 0));
 
   return g;
 }
@@ -579,37 +643,51 @@ function buildChichenItza() {
 }
 
 function buildSydneyOperaHouse() {
+  // v12 geometry: pointed sail-shells replacing v11 rounded half-domes.
+  // Each shell = top cap of a sphere scaled tall so it curves up to a ridge
+  // (like the precast concrete shells on the real building). DoubleSide material
+  // so the open curved underside reads white, not a black backface.
   const g = new THREE.Group();
-  const tile=mat(0xf8f6f2,0.2,0.05), base=mat(0xe0dcd5,0.7), conc=mat(0xc8c4bc,0.8);
-  // Podium base
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(12,0.8,6),base), 0, 0.4, 0));
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(11,0.4,5.5),conc), 0, 1, 0));
+  const base=mat(0xb8b2a6,0.75), conc=mat(0xd6d2ca,0.8);
+  const tile=mat(0xf6f4ef,0.32,0.05); tile.side = THREE.DoubleSide;
 
-  // Shell geometry — iconic curved sail shapes
-  // Shell 1: large main concert hall shell (3 nested shells)
-  function buildShell(cx, cz, xScale, yScale, zScale, rotY) {
-    const shellGroup = new THREE.Group();
-    for (let s = 0; s < 3; s++) {
-      const pts = [];
-      for (let i = 0; i <= 16; i++) {
-        const t = i / 16;
-        const r = (1 - t) * 2.2;
-        const h = Math.sin(t * Math.PI) * 3.5 * (1 - t * 0.3);
-        pts.push(new THREE.Vector2(r * (1 + s * 0.12), h * yScale));
-      }
-      const geo = new THREE.LatheGeometry(pts, 8, 0, Math.PI);
-      const shell = new THREE.Mesh(geo, tile);
-      shell.scale.set(xScale * (1 - s * 0.08), 1, zScale * (1 - s * 0.08));
-      shellGroup.add(shell);
-    }
-    shellGroup.position.set(cx, 1.2, cz);
-    shellGroup.rotation.y = rotY;
-    return shellGroup;
+  // Broad stepped podium the shells rise from
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(14,0.7,7),base), 0, 0.35, 0));
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(13,0.45,6.2),conc), 0, 0.92, 0));
+
+  // One sail: top spherical cap scaled tall to form a pointed ridge
+  function sail(h, w, d) {
+    // phiStart=PI/2 open half, phiLength=PI = half azimuth; thetaLength=0.6*PI past equator
+    const geo = new THREE.SphereGeometry(1, 24, 16, Math.PI*0.5, Math.PI, 0, Math.PI*0.6);
+    const m = new THREE.Mesh(geo, tile);
+    m.scale.set(w, h, d);
+    m.castShadow = true;
+    return m;
   }
 
-  g.add(buildShell(-1.5, 0, 1.1, 1.0, 0.8, 0));      // main hall
-  g.add(buildShell(2.5, 0, 0.85, 0.82, 0.65, 0.1));   // opera theatre
-  g.add(buildShell(5.5, 0, 0.5, 0.55, 0.45, 0.2));    // smaller shell
+  // A cluster = row of decreasing sails (like the stepped rooflines on the real building)
+  function cluster(cx, cz, yaw, sc) {
+    const c = new THREE.Group();
+    const sizes = [[3.6,2.0,2.3],[2.9,1.7,2.05],[2.2,1.4,1.8],[1.5,1.05,1.5]];
+    let z = 1.6*sc;
+    sizes.forEach(([h,w,d]) => {
+      const s = sail(h*sc, w*sc, d*sc);
+      s.position.set(0, 0.9, z); c.add(s);
+      z -= d*sc*0.7;
+    });
+    // Opposing rear shell
+    const back = sail(1.8*sc, 1.15*sc, 1.6*sc);
+    back.position.set(0, 0.9, z+0.5*sc);
+    back.rotation.y = Math.PI;
+    c.add(back);
+    c.position.set(cx, 0, cz);
+    c.rotation.y = yaw;
+    return c;
+  }
+
+  g.add(cluster(-3.2,  0.5,  0.16, 1.00));   // Concert Hall (largest)
+  g.add(cluster( 1.4, -0.4,  0.16, 0.82));   // Opera Theatre
+  g.add(cluster( 5.2,  0.8, -0.50, 0.42));   // Bennelong restaurant shells
 
   return g;
 }
