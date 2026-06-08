@@ -826,35 +826,43 @@ scene.add(pa(new THREE.GridHelper(35,22,0x252733,0x1a1c28), 0, 0.01, 0));
 
 // Procedural environment map (core THREE, no addon) so chrome/gold have something
 // to reflect. A vertical gradient + two bright blobs = believable studio reflection.
+// Wrapped defensively: a failure here must never halt module boot (the whole
+// search/render path runs after this). On failure chrome/gold degrade gracefully.
 const ENV_MAP = (() => {
-  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
-  const ctx = c.getContext('2d');
-  const g = ctx.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0.00, '#aab8e0'); g.addColorStop(0.45, '#e6edff');
-  g.addColorStop(0.50, '#ffffff'); g.addColorStop(0.56, '#3a3f4d');
-  g.addColorStop(1.00, '#0b0c10');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 256);
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.beginPath(); ctx.arc(140, 70, 38, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,214,150,0.7)';
-  ctx.beginPath(); ctx.arc(380, 92, 26, 0, Math.PI * 2); ctx.fill();
-  const tex = new THREE.CanvasTexture(c);
-  tex.mapping = THREE.EquirectangularReflectionMapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const env = pmrem.fromEquirectangular(tex).texture;
-  pmrem.dispose(); tex.dispose();
-  return env;
+  try {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+    const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0.00, '#aab8e0'); g.addColorStop(0.45, '#e6edff');
+    g.addColorStop(0.50, '#ffffff'); g.addColorStop(0.56, '#3a3f4d');
+    g.addColorStop(1.00, '#0b0c10');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 256);
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.beginPath(); ctx.arc(140, 70, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,214,150,0.7)';
+    ctx.beginPath(); ctx.arc(380, 92, 26, 0, Math.PI * 2); ctx.fill();
+    const tex = new THREE.CanvasTexture(c);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const env = pmrem.fromEquirectangular(tex).texture;
+    pmrem.dispose(); tex.dispose();
+    return env;
+  } catch (e) { console.warn('env map unavailable:', e && e.message); return null; }
 })();
+const HAS_ENV = !!ENV_MAP;
 
-// 4-step greyscale ramp for cel shading.
+// 4-step greyscale ramp for cel shading. Defensive: a null gradient still gives
+// a valid (smoother) MeshToonMaterial.
 const TOON_GRADIENT = (() => {
-  const steps = [55, 120, 190, 245];
-  const data = new Uint8Array(steps.length * 4);
-  steps.forEach((v, i) => { data[i*4] = v; data[i*4+1] = v; data[i*4+2] = v; data[i*4+3] = 255; });
-  const tex = new THREE.DataTexture(data, steps.length, 1, THREE.RGBAFormat);
-  tex.minFilter = THREE.NearestFilter; tex.magFilter = THREE.NearestFilter; tex.needsUpdate = true;
-  return tex;
+  try {
+    const steps = [55, 120, 190, 245];
+    const data = new Uint8Array(steps.length * 4);
+    steps.forEach((v, i) => { data[i*4] = v; data[i*4+1] = v; data[i*4+2] = v; data[i*4+3] = 255; });
+    const tex = new THREE.DataTexture(data, steps.length, 1, THREE.RGBAFormat);
+    tex.minFilter = THREE.NearestFilter; tex.magFilter = THREE.NearestFilter; tex.needsUpdate = true;
+    return tex;
+  } catch (e) { console.warn('toon gradient unavailable:', e && e.message); return null; }
 })();
 
 function neonize(hex) {
@@ -870,9 +878,9 @@ const STYLES = [
   { id:'clay', label:'Clay', icon:'🟫', bg:0x1a1612, fog:[40,95], env:false,
     make:()=> new THREE.MeshStandardMaterial({ color:0xc97b5a, roughness:1.0, metalness:0.0 }) },
   { id:'chrome', label:'Chrome', icon:'🪞', bg:0x0d0f15, fog:null, env:true,
-    make:()=> new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.08, metalness:1.0, envMapIntensity:1.4 }) },
+    make:()=> new THREE.MeshStandardMaterial({ color:0xffffff, roughness: HAS_ENV ? 0.08 : 0.22, metalness: HAS_ENV ? 1.0 : 0.85, envMapIntensity:1.4 }) },
   { id:'gold', label:'Gold', icon:'🥇', bg:0x14110a, fog:null, env:true,
-    make:()=> new THREE.MeshStandardMaterial({ color:0xffd24a, roughness:0.28, metalness:1.0, envMapIntensity:1.3 }) },
+    make:()=> new THREE.MeshStandardMaterial({ color:0xffd24a, roughness: HAS_ENV ? 0.28 : 0.34, metalness: HAS_ENV ? 1.0 : 0.85, envMapIntensity:1.3 }) },
   { id:'toon', label:'Toon', icon:'🎨', bg:0x101826, fog:[45,95], env:false,
     make:(base)=> new THREE.MeshToonMaterial({ color:base, gradientMap:TOON_GRADIENT }) },
   { id:'neon', label:'Neon', icon:'💡', bg:0x05060a, fog:null, env:false,
@@ -887,7 +895,7 @@ let currentStyle = 'realistic';
 
 function applyStyle(group, styleId) {
   const st = STYLE_BY_ID[styleId] || STYLES[0];
-  scene.environment = st.env ? ENV_MAP : null;
+  scene.environment = (st.env && ENV_MAP) ? ENV_MAP : null;
   scene.background = new THREE.Color(st.bg);
   scene.fog = st.fog ? new THREE.Fog(st.bg, st.fog[0], st.fog[1]) : null;
   group.traverse(o => {
