@@ -165,6 +165,32 @@
     }
     #hint.visible { display: block; }
 
+    /* Style selector */
+    #style-bar {
+      position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+      display: none; gap: 6px; padding: 6px;
+      background: rgba(13,14,20,0.72); backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: 12px;
+      max-width: calc(100% - 24px); overflow-x: auto; scrollbar-width: none;
+      z-index: 5;
+    }
+    #style-bar::-webkit-scrollbar { display: none; }
+    #style-bar.visible { display: flex; }
+    .style-chip {
+      flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
+      gap: 2px; min-width: 58px; padding: 7px 8px; cursor: pointer;
+      border: 1px solid transparent; border-radius: 9px;
+      background: rgba(255,255,255,0.03); color: var(--muted);
+      font-size: 11px; line-height: 1.2; transition: all 0.14s ease;
+      user-select: none;
+    }
+    .style-chip:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .style-chip .chip-icon { font-size: 18px; }
+    .style-chip.active {
+      background: rgba(124,160,255,0.16); border-color: var(--accent);
+      color: #fff;
+    }
+
     /* Footer */
     #footer {
       height: 34px; background: var(--footer-bg);
@@ -205,6 +231,7 @@
     </div>
     <div id="info-overlay"><div id="info-name"></div><div id="info-meta"></div></div>
     <div id="hint">Drag to rotate &middot; Scroll to zoom</div>
+    <div id="style-bar"></div>
   </main>
 
   <footer id="footer">
@@ -212,7 +239,7 @@
     <span>&middot;</span>
     <a href="https://hire.autonomous-fleet.workers.dev" target="_blank" rel="noopener">hire.autonomous-fleet.workers.dev</a>
     <span>&middot;</span>
-    <span>v7</span>
+    <span>v10 &middot; stylise</span>
   </footer>
 </div>
 
@@ -786,6 +813,105 @@ ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
 scene.add(ground);
 scene.add(Object.assign(new THREE.GridHelper(35,22,0x252733,0x1a1c28), {position: new THREE.Vector3(0,0.01,0)}));
 
+// ─── Stylisation ──────────────────────────────────────────────────────────────
+// The customer's product: pick a landmark, then render the same geometry in a
+// chosen visual style. Each style re-materialises the current model; the chosen
+// style persists across landmarks and is baked into the downloaded .glb.
+
+// Procedural environment map (core THREE, no addon) so chrome/gold have something
+// to reflect. A vertical gradient + two bright blobs = believable studio reflection.
+const ENV_MAP = (() => {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0.00, '#aab8e0'); g.addColorStop(0.45, '#e6edff');
+  g.addColorStop(0.50, '#ffffff'); g.addColorStop(0.56, '#3a3f4d');
+  g.addColorStop(1.00, '#0b0c10');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 256);
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.beginPath(); ctx.arc(140, 70, 38, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,214,150,0.7)';
+  ctx.beginPath(); ctx.arc(380, 92, 26, 0, Math.PI * 2); ctx.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = pmrem.fromEquirectangular(tex).texture;
+  pmrem.dispose(); tex.dispose();
+  return env;
+})();
+
+// 4-step greyscale ramp for cel shading.
+const TOON_GRADIENT = (() => {
+  const steps = [55, 120, 190, 245];
+  const data = new Uint8Array(steps.length * 4);
+  steps.forEach((v, i) => { data[i*4] = v; data[i*4+1] = v; data[i*4+2] = v; data[i*4+3] = 255; });
+  const tex = new THREE.DataTexture(data, steps.length, 1, THREE.RGBAFormat);
+  tex.minFilter = THREE.NearestFilter; tex.magFilter = THREE.NearestFilter; tex.needsUpdate = true;
+  return tex;
+})();
+
+function neonize(hex) {
+  const c = new THREE.Color(hex); const hsl = {}; c.getHSL(hsl);
+  return new THREE.Color().setHSL(hsl.h, 1.0, 0.62);
+}
+
+const STYLES = [
+  { id:'realistic', label:'Realistic', icon:'🌅', bg:0x0b0c10, fog:[40,90], env:false,
+    make:(base)=> new THREE.MeshStandardMaterial({ color:base, roughness:0.8, metalness:0.05 }) },
+  { id:'lowpoly', label:'Low-poly', icon:'🔻', bg:0x12131a, fog:[40,90], env:false,
+    make:(base)=> new THREE.MeshStandardMaterial({ color:base, roughness:0.95, metalness:0.0, flatShading:true }) },
+  { id:'clay', label:'Clay', icon:'🟫', bg:0x1a1612, fog:[40,95], env:false,
+    make:()=> new THREE.MeshStandardMaterial({ color:0xc97b5a, roughness:1.0, metalness:0.0 }) },
+  { id:'chrome', label:'Chrome', icon:'🪞', bg:0x0d0f15, fog:null, env:true,
+    make:()=> new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.08, metalness:1.0, envMapIntensity:1.4 }) },
+  { id:'gold', label:'Gold', icon:'🥇', bg:0x14110a, fog:null, env:true,
+    make:()=> new THREE.MeshStandardMaterial({ color:0xffd24a, roughness:0.28, metalness:1.0, envMapIntensity:1.3 }) },
+  { id:'toon', label:'Toon', icon:'🎨', bg:0x101826, fog:[45,95], env:false,
+    make:(base)=> new THREE.MeshToonMaterial({ color:base, gradientMap:TOON_GRADIENT }) },
+  { id:'neon', label:'Neon', icon:'💡', bg:0x05060a, fog:null, env:false,
+    make:(base)=> new THREE.MeshBasicMaterial({ color:neonize(base), wireframe:true }) },
+  { id:'xray', label:'X-ray', icon:'👻', bg:0x04070d, fog:null, env:false,
+    make:()=> new THREE.MeshStandardMaterial({ color:0x66ccff, emissive:0x16365f, roughness:0.4, metalness:0.0, transparent:true, opacity:0.34, depthWrite:false, side:THREE.DoubleSide }) },
+  { id:'blueprint', label:'Blueprint', icon:'📐', bg:0x0a1a3a, fog:null, env:false,
+    make:()=> new THREE.MeshBasicMaterial({ color:0x8fd3ff, wireframe:true }) },
+];
+const STYLE_BY_ID = Object.fromEntries(STYLES.map(s => [s.id, s]));
+let currentStyle = 'realistic';
+
+function applyStyle(group, styleId) {
+  const st = STYLE_BY_ID[styleId] || STYLES[0];
+  scene.environment = st.env ? ENV_MAP : null;
+  scene.background = new THREE.Color(st.bg);
+  scene.fog = st.fog ? new THREE.Fog(st.bg, st.fog[0], st.fog[1]) : null;
+  group.traverse(o => {
+    if (!o.isMesh) return;
+    const base = (o.userData.baseColor != null) ? o.userData.baseColor : 0xcccccc;
+    const old = o.material;
+    o.material = st.make(base);
+    if (old && old.dispose) old.dispose();
+  });
+}
+
+// Build the style chip row once. Clicking a chip re-materialises the current
+// model in that style (no rebuild) and remembers the choice for the next one.
+(function buildStyleBar() {
+  const bar = document.getElementById('style-bar');
+  STYLES.forEach(st => {
+    const chip = document.createElement('div');
+    chip.className = 'style-chip' + (st.id === currentStyle ? ' active' : '');
+    chip.dataset.style = st.id;
+    chip.innerHTML = `<span class="chip-icon">${st.icon}</span><span>${st.label}</span>`;
+    chip.addEventListener('click', () => {
+      currentStyle = st.id;
+      bar.querySelectorAll('.style-chip').forEach(c =>
+        c.classList.toggle('active', c.dataset.style === st.id));
+      if (currentGroup) applyStyle(currentGroup, currentStyle);
+    });
+    bar.appendChild(chip);
+  });
+})();
+
 let currentGroup = null;
 let currentLandmark = null;
 
@@ -793,7 +919,14 @@ function selectLandmark(lm) {
   if (currentGroup) scene.remove(currentGroup);
   currentLandmark = lm;
   currentGroup = lm.build();
-  currentGroup.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  currentGroup.traverse(o => {
+    if (o.isMesh) {
+      o.castShadow = true; o.receiveShadow = true;
+      // Remember the colour the builder chose so styles can keep or override it.
+      if (o.material && o.material.color) o.userData.baseColor = o.material.color.getHex();
+    }
+  });
+  applyStyle(currentGroup, currentStyle);
   scene.add(currentGroup);
 
   document.getElementById('info-name').textContent = lm.name;
@@ -802,6 +935,7 @@ function selectLandmark(lm) {
   document.getElementById('hint').classList.add('visible');
   document.getElementById('empty-state').style.display = 'none';
   document.getElementById('dl-btn').disabled = false;
+  document.getElementById('style-bar').classList.add('visible');
 
   // Camera move
   const target = new THREE.Vector3(lm.camera.x, lm.camera.y, lm.camera.z);
