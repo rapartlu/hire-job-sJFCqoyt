@@ -551,22 +551,36 @@ function buildTajMahal() {
 }
 
 function buildStatueOfLiberty() {
+  // v13: pedestal redesigned to 4-tier taper (~1.5x figure height), robe widened,
+  // crown spikes correctly oriented outward, tablet added under left arm.
   const g = new THREE.Group();
   const gran=mat(0x6a6560,0.9), conc=mat(0x9a9285,0.85), cop=mat(0x4a8a72,0.8,0.15), cdk=mat(0x3a7060,0.85,0.15);
-  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(3.5,3.8,0.4,12),gran), 0, 0.2, 0));
-  for(let i=0;i<10;i++){const a=(i/10)*Math.PI*2,r=i%2===0?3.5:2.8;const b=new THREE.Mesh(new THREE.BoxGeometry(1,0.6,0.5),gran);b.position.set(Math.cos(a)*r,0.5,Math.sin(a)*r);b.rotation.y=a+Math.PI/2;g.add(b);}
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.8,2,2.8),gran), 0, 1.4, 0));
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2.4,2,2.4),conc), 0, 3.4, 0));
-  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(2,0.5,2),conc), 0, 4.85, 0));
-  const robes=new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.85,3.5,10),cop); robes.position.y=6.9; g.add(robes);
-  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.52,0.7,1.8,10),cop), 0, 9.5, 0));
-  g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.42,12,10),cop), 0, 10.9, 0));
-  for(let i=0;i<7;i++){const a=(i/7)*Math.PI*2;const sp=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.55,5),cop);sp.position.set(Math.cos(a)*0.38,11.05,Math.sin(a)*0.38);sp.rotation.z=Math.atan2(Math.cos(a),0.5)*(a>Math.PI?-1:1);sp.rotation.x=Math.atan2(Math.sin(a),0.5)*-1;g.add(sp);}
-  const raUp=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,1,6),cop); raUp.position.set(0.65,9.8,0); raUp.rotation.z=-1.1; g.add(raUp);
-  const fa=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,0.8,6),cop); fa.position.set(1.35,10.5,0); fa.rotation.z=-0.3; g.add(fa);
-  const tc=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.08,0.25,8),cdk); tc.position.set(1.6,11.55,0); g.add(tc);
-  const fl=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.4,8),mat(0xffcc44,0.1,0.2)); fl.position.set(1.62,11.85,0); g.add(fl);
-  const fll=new THREE.PointLight(0xffaa22,0.8,5); fll.position.set(1.62,11.85,0); g.add(fll);
+  // Stepped pedestal: 4 tiers narrowing from octagonal star-fort base to figure
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(4.0,4.5,0.6,8),gran), 0,0.3,0));   // star-fort base
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(3.1,3.8,2.8,4),gran), 0,2.0,0));   // lower pedestal
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(2.5,3.1,2.5,4),conc), 0,4.65,0));  // mid pedestal
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(2.0,2.5,2.0,4),conc), 0,6.9,0));   // upper pedestal
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(1.85,2.0,0.35,8),conc), 0,8.08,0)); // pedestal cap
+  // Draped robe: wider at base than waist - key silhouette cue
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.72,1.45,4.0,10),cop), 0,10.25,0));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.58,0.72,0.8,10),cop), 0,12.65,0));
+  g.add(pa(new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.58,1.2,10),cop), 0,13.65,0));
+  // Head + crown ring
+  g.add(pa(new THREE.Mesh(new THREE.SphereGeometry(0.46,12,10),cop), 0,14.58,0));
+  g.add(pa(new THREE.Mesh(new THREE.TorusGeometry(0.42,0.08,4,14),cdk), 0,14.85,0));
+  // 7 crown spikes pointing outward and upward via quaternion rotation
+  const _up=new THREE.Vector3(0,1,0);
+  for(let i=0;i<7;i++){const a=(i/7)*Math.PI*2;const sp=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.7,5),cop);sp.position.set(Math.cos(a)*0.45,15.05,Math.sin(a)*0.45);sp.setRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(_up,new THREE.Vector3(Math.cos(a),1.2,Math.sin(a)).normalize()));g.add(sp);}
+  // Right arm raised with torch (arm + forearm + handle + flame)
+  const ua=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.14,1.6,6),cop);ua.position.set(0.75,13.5,0);ua.rotation.z=-1.0;g.add(ua);
+  const fa=new THREE.Mesh(new THREE.CylinderGeometry(0.10,0.12,1.4,6),cop);fa.position.set(1.7,14.8,0);fa.rotation.z=-0.3;g.add(fa);
+  const th=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.11,1.0,8),cdk);th.position.set(2.05,15.95,0);g.add(th);
+  const tc=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.13,0.28,8),cdk);tc.position.set(2.05,16.59,0);g.add(tc);
+  const fl=new THREE.Mesh(new THREE.ConeGeometry(0.15,0.55,8),mat(0xffcc44,0.1,0.2));fl.position.set(2.05,17.0,0);g.add(fl);
+  const fll=new THREE.PointLight(0xffaa22,0.8,6);fll.position.set(2.05,17.0,0);g.add(fll);
+  // Tablet under left arm
+  const tab=new THREE.Mesh(new THREE.BoxGeometry(0.88,0.14,0.58),cop);tab.position.set(-0.9,12.5,0.15);tab.rotation.z=0.45;g.add(tab);
+  const la=new THREE.Mesh(new THREE.CylinderGeometry(0.10,0.12,1.2,6),cop);la.position.set(-0.65,12.2,0);la.rotation.z=0.7;g.add(la);
   return g;
 }
 
@@ -639,6 +653,24 @@ function buildChichenItza() {
     stair.position.set(Math.cos(a)*4.05,4.1,Math.sin(a)*4.05);
     stair.rotation.y=a; stair.rotation.x=-Math.atan2(4,4); g.add(stair);
   }
+  return g;
+}
+
+function buildPyramidOfGiza() {
+  // v13: square-base pyramid with correct 1:0.636 height-to-base ratio (Great Pyramid),
+  // sandstone tan, flat shading gives visible masonry-course variation.
+  const g = new THREE.Group();
+  const sand=new THREE.MeshStandardMaterial({color:0xc2a050,roughness:0.88,flatShading:true});
+  const base=mat(0x9a7838,0.92);
+  const SIDE=12, H=SIDE*0.636, R=(SIDE/2)*Math.SQRT2;
+  // Desert plateau base
+  g.add(pa(new THREE.Mesh(new THREE.BoxGeometry(SIDE+2,0.4,SIDE+2),base), 0,0.2,0));
+  // Pyramid body - 4-sided cone, 14 height segments for subtle masonry-course shading
+  const pyr=new THREE.Mesh(new THREE.ConeGeometry(R,H,4,14),sand);
+  pyr.position.y=0.4+H/2; pyr.rotation.y=Math.PI/4; pyr.castShadow=true; g.add(pyr);
+  // Capstone hint (darker tip)
+  const cap=new THREE.Mesh(new THREE.ConeGeometry(R*0.06,H*0.04,4),mat(0x888060,0.9));
+  cap.position.y=0.4+H+H*0.02; cap.rotation.y=Math.PI/4; g.add(cap);
   return g;
 }
 
@@ -846,7 +878,7 @@ const LANDMARKS = [
     name: 'Statue of Liberty',
     aliases: ['statue of liberty', 'liberty', 'lady liberty', 'new york statue'],
     city: 'New York, USA', year: 'Dedicated 1886', icon: '🗽',
-    build: buildStatueOfLiberty, camera: {x:5,y:10,z:20},
+    build: buildStatueOfLiberty, camera: {x:5,y:12,z:22},
   },
   {
     id: 'empire',
@@ -868,6 +900,13 @@ const LANDMARKS = [
     aliases: ['chichen itza', 'el castillo', 'mayan pyramid', 'mexican pyramid', 'pyramid mexico'],
     city: 'Yucatan, Mexico', year: 'Built c.1000 AD', icon: '🏔️',
     build: buildChichenItza, camera: {x:7,y:7,z:16},
+  },
+  {
+    id: 'giza',
+    name: 'Great Pyramid of Giza',
+    aliases: ['pyramid of giza', 'great pyramid', 'giza pyramid', 'pyramid giza', 'egypt pyramid', 'khufu pyramid', 'giza'],
+    city: 'Giza, Egypt', year: 'Built c.2560 BC', icon: '🔺',
+    build: buildPyramidOfGiza, camera: {x:7,y:5,z:16},
   },
   {
     id: 'sydney',

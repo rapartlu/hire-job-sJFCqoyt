@@ -1,0 +1,89 @@
+name: sJFCqoyt landmark visual recognition - Realistic style
+variables:
+  deployed_url: https://sjfcqoyt-landmarks.autonomous-fleet.workers.dev
+
+steps:
+  # ── Eiffel Tower ──────────────────────────────────────────────────────────
+  - navigate: "${deployed_url}"
+  - wait_for_selector: "#search-input"
+    timeout_ms: 15000
+  - type: { selector: "#search-input", text: "eiffel tower" }
+  - wait_for_selector: ".suggestion"
+  - click: ".suggestion"
+  - wait_for_selector: "canvas"
+    timeout_ms: 10000
+  - wait_ms: 3000
+  - screenshot: eiffel-realistic
+  - assert_visually_matches_reference:
+      screenshot: eiffel-realistic
+      reference_url: https://upload.wikimedia.org/wikipedia/commons/8/85/Tour_Eiffel_Wikimedia_Commons_%28cropped%29.jpg
+      expected: "rendered 3D model should be recognisable as the Eiffel Tower - lattice ironwork structure with four splayed legs narrowing to a pointed spire"
+      min_score: 4
+
+  # ── Big Ben ───────────────────────────────────────────────────────────────
+  - navigate: "${deployed_url}"
+  - wait_for_selector: "#search-input"
+    timeout_ms: 15000
+  - type: { selector: "#search-input", text: "big ben" }
+  - wait_for_selector: ".suggestion"
+  - click: ".suggestion"
+  - wait_for_selector: "canvas"
+    timeout_ms: 10000
+  - wait_ms: 3000
+  - screenshot: bigben-realistic
+  - assert_visually_matches_reference:
+      screenshot: bigben-realistic
+      reference_url: https://upload.wikimedia.org/wikipedia/commons/4/43/Elizabeth_Tower%2C_June_2022.jpg
+      expected: "rendered 3D model should be recognisable as Elizabeth Tower (Big Ben) - tall Gothic clocktower with large clock face near the top and ornate crown"
+      min_score: 4
+
+  # ── Statue of Liberty ─────────────────────────────────────────────────────
+  - navigate: "${deployed_url}"
+  - wait_for_selector: "#search-input"
+    timeout_ms: 15000
+  - type: { selector: "#search-input", text: "statue of liberty" }
+  - wait_for_selector: ".suggestion"
+  - click: ".suggestion"
+  - wait_for_selector: "canvas"
+    timeout_ms: 10000
+  - wait_ms: 3000
+  - screenshot: liberty-realistic
+  - assert_visually_matches_reference:
+      screenshot: liberty-realistic
+      reference_url: https://upload.wikimedia.org/wikipedia/commons/a/a1/Statue_of_Liberty_7.jpg
+      expected: "rendered 3D model should be recognisable as the Statue of Liberty - robed female figure on tall tapered pedestal, right arm raised holding torch, 7-spike crown on head"
+      min_score: 4
+
+  # ── Sydney Opera House ────────────────────────────────────────────────────
+  - navigate: "${deployed_url}"
+  - wait_for_selector: "#search-input"
+    timeout_ms: 15000
+  - type: { selector: "#search-input", text: "sydney opera house" }
+  - wait_for_selector: ".suggestion"
+  - click: ".suggestion"
+  - wait_for_selector: "canvas"
+    timeout_ms: 10000
+  - wait_ms: 3000
+  - screenshot: sydney-realistic
+  - assert_visually_matches_reference:
+      screenshot: sydney-realistic
+      reference_url: https://upload.wikimedia.org/wikipedia/commons/a/a0/Sydney_Australia._%2821339175489%29.jpg
+      expected: "rendered 3D model should be recognisable as the Sydney Opera House - white curved sail-shell roofs rising from a flat podium, multiple overlapping shell shapes"
+      min_score: 4
+
+  # ── Pyramid of Giza ───────────────────────────────────────────────────────
+  - navigate: "${deployed_url}"
+  - wait_for_selector: "#search-input"
+    timeout_ms: 15000
+  - type: { selector: "#search-input", text: "pyramid of giza" }
+  - wait_for_selector: ".suggestion"
+  - click: ".suggestion"
+  - wait_for_selector: "canvas"
+    timeout_ms: 10000
+  - wait_ms: 3000
+  - screenshot: giza-realistic
+  - assert_visually_matches_reference:
+      screenshot: giza-realistic
+      reference_url: https://upload.wikimedia.org/wikipedia/commons/e/e3/Kheops-Pyramid.jpg
+      expected: "rendered 3D model should be recognisable as the Great Pyramid of Giza - square-base pyramid with sandstone tan colour, base much wider than height (ratio ~1.57:1)"
+      min_score: 4
